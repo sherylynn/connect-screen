@@ -24,6 +24,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.gitee.connect_screen.job.AcquireShizuku;
 import com.gitee.connect_screen.job.MirrorArgs;
 import com.gitee.connect_screen.job.MirrorViaDisplaylink;
+import com.gitee.connect_screen.shizuku.ShizukuUtils;
 
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
@@ -175,6 +176,11 @@ public class MainActivity extends AppCompatActivity {
         logAdapter = new LogAdapter(State.logs);
         logRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         logRecyclerView.setAdapter(logAdapter);
+
+        if (ShizukuUtils.hasPermission() && State.userService == null) {
+            Shizuku.peekUserService(State.userServiceArgs, State.userServiceConnection);
+            Shizuku.bindUserService(State.userServiceArgs, State.userServiceConnection);
+        }
     }
 
     @Override

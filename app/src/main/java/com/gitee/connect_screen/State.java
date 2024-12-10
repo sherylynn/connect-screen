@@ -59,7 +59,7 @@ public class State {
     public static final Shizuku.UserServiceArgs userServiceArgs =
             new Shizuku.UserServiceArgs(new ComponentName(BuildConfig.APPLICATION_ID, UserService.class.getName()))
                     .daemon(true)
-                    .tag("temp5")
+                    .tag("temp23")
                     .processNameSuffix("connect-screen")
                     .debuggable(false)
                     .version(BuildConfig.VERSION_CODE);

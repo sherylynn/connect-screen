@@ -6,11 +6,14 @@ import android.content.Intent;
 import android.graphics.Point;
 import android.hardware.display.DisplayManager;
 import android.os.Bundle;
+import android.os.IBinder;
+import android.os.RemoteException;
 import android.util.DisplayMetrics;
 import android.view.Display;
 import android.view.DisplayCutout;
 import android.view.DisplayInfo;
 import android.view.LayoutInflater;
+import android.view.SurfaceControl;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -24,6 +27,10 @@ import androidx.fragment.app.Fragment;
 import com.gitee.connect_screen.job.ChangeResolution;
 import com.gitee.connect_screen.shizuku.ServiceUtils;
 import com.gitee.connect_screen.shizuku.ShizukuUtils;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.Arrays;
 
 public class DisplayDetailFragment extends Fragment {
     private static final String ARG_DISPLAY_ID = "display_id";
@@ -114,6 +121,12 @@ public class DisplayDetailFragment extends Fragment {
             getDisplayFlags(display),
             cutoutInfo
         );
+
+        try {
+            State.userService.tryChangeDisplayConfig();
+        } catch (RemoteException e) {
+            throw new RuntimeException(e);
+        }
         detailText.setText(details);
 
         shizukuStatusText = view.findViewById(R.id.shizuku_status);
