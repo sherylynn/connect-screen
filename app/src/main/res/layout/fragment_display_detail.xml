@@ -104,5 +104,11 @@
             android:layout_marginTop="8dp"
             android:text="触控板"/>
 
+        <Button
+            android:id="@+id/frame_rate_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="设置120Hz" />
+
     </LinearLayout>
 </ScrollView>

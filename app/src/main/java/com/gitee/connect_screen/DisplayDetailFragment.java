@@ -123,7 +123,7 @@ public class DisplayDetailFragment extends Fragment {
         );
 
         try {
-            State.userService.tryChangeDisplayConfig();
+            State.userService.changeTo120();
         } catch (RemoteException e) {
             throw new RuntimeException(e);
         }
@@ -149,6 +149,15 @@ public class DisplayDetailFragment extends Fragment {
         }
         touchpadButton.setOnClickListener(v -> {
             TouchpadActivity.startTouchpad(getContext(), displayId, false);
+        });
+
+        // 在touchpadButton之后添加
+        Button frameRateButton = view.findViewById(R.id.frame_rate_button);
+        if (displayId == 0) {
+            frameRateButton.setVisibility(View.GONE);
+        }
+        frameRateButton.setOnClickListener(v -> {
+            FrameRateActivity.startFrameRateActivity(getContext(), displayId);
         });
 
         // 添加修改按钮点击事件

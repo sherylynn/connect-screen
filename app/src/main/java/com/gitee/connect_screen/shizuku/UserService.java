@@ -154,14 +154,38 @@ public class UserService extends IUserService.Stub  {
         } catch (ReflectiveOperationException e) {
             Log.e("UserService", "Could not get render field", e);
         }
-        if (render == null) {
-            return;
+        if (render != null) {
+            setMinMax(render);
+        }
+
+        Object physical = null;
+        try {
+            Field physicalField = refreshRateRanges.getClass().getDeclaredField("physical");
+            physicalField.setAccessible(true);
+            physical = physicalField.get(refreshRateRanges);
+            Log.i("UserService", "got physical: " + physical);
+        } catch (ReflectiveOperationException e) {
+            Log.e("UserService", "Could not get physical field", e);
+        }
+        if (physical != null) {
+            setMinMax(physical);
+        }
+    }
+
+    private void setMinMax(Object render) {
+        try {
+            Field minField = render.getClass().getDeclaredField("min");
+            minField.setAccessible(true);
+            minField.setFloat(render, 90.0f);
+            Log.i("UserService", "set min to 90: " + render);
+        } catch (ReflectiveOperationException e) {
+            Log.e("UserService", "Could not set min field", e);
         }
         try {
             Field maxField = render.getClass().getDeclaredField("max");
             maxField.setAccessible(true);
-            maxField.setFloat(render, 120.0f);
-            Log.i("UserService", "set max to 120: " + render);
+            maxField.setFloat(render, 121.0f);
+            Log.i("UserService", "set max to 121: " + render);
         } catch (ReflectiveOperationException e) {
             Log.e("UserService", "Could not set max field", e);
         }
@@ -183,7 +207,7 @@ public class UserService extends IUserService.Stub  {
         try {
             Field defaultModeField = desiredDisplayModeSpecs.getClass().getDeclaredField("defaultMode");
             defaultModeField.setAccessible(true);
-            defaultModeField.setInt(desiredDisplayModeSpecs, 2);
+            defaultModeField.setInt(desiredDisplayModeSpecs, 1);
             Log.i("UserService", "set defaultMode to 2: " + desiredDisplayModeSpecs);
         } catch (ReflectiveOperationException e) {
             Log.e("UserService", "Could not set defaultMode field", e);
@@ -209,6 +233,15 @@ public class UserService extends IUserService.Stub  {
         }
         changeRenderTo120(appRequestRanges);
         setDesiredDisplayModeSpecs(physicalDisplayToken, desiredDisplayModeSpecs);
+
+        try {
+            Method getBootDisplayModeSupportMethod = SurfaceControl.class.getDeclaredMethod("getBootDisplayModeSupport");
+            getBootDisplayModeSupportMethod.setAccessible(true);
+            boolean bootDisplayModeSupport = (boolean) getBootDisplayModeSupportMethod.invoke(null);
+            Log.i("UserService", "bootDisplayModeSupport: " + bootDisplayModeSupport);
+        } catch (ReflectiveOperationException e) {
+            Log.e("UserService", "Could not invoke getBootDisplayModeSupport", e);
+        }
     }
 
     private void setDesiredDisplayModeSpecs(IBinder physicalDisplayToken, Object desiredDisplayModeSpecs) {
