@@ -208,9 +208,17 @@ public class UserService extends IUserService.Stub  {
             Field defaultModeField = desiredDisplayModeSpecs.getClass().getDeclaredField("defaultMode");
             defaultModeField.setAccessible(true);
             defaultModeField.setInt(desiredDisplayModeSpecs, 1);
-            Log.i("UserService", "set defaultMode to 2: " + desiredDisplayModeSpecs);
+            Log.i("UserService", "set defaultMode to 1: " + desiredDisplayModeSpecs);
         } catch (ReflectiveOperationException e) {
             Log.e("UserService", "Could not set defaultMode field", e);
+        }
+        try {
+            Field allowGroupSwitchingField = desiredDisplayModeSpecs.getClass().getDeclaredField("allowGroupSwitching");
+            allowGroupSwitchingField.setAccessible(true);
+            allowGroupSwitchingField.setBoolean(desiredDisplayModeSpecs, true);
+            Log.i("UserService", "set allowGroupSwitching to true: " + desiredDisplayModeSpecs);
+        } catch (ReflectiveOperationException e) {
+            Log.e("UserService", "Could not set allowGroupSwitching field", e);
         }
         Object primaryRanges = null;
         try {
