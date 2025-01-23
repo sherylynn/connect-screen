@@ -19,6 +19,13 @@
             android:padding="8dp"
             android:text="设置" />
 
+        <Button
+            android:id="@+id/nsdSearchBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="8dp"
+            android:text="NSD搜索" />
+
         <Space
             android:layout_width="0dp"
             android:layout_height="wrap_content"
