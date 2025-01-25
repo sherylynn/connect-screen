@@ -1,18 +1,12 @@
 package com.gitee.connect_screen;
 
-import android.app.ActivityOptions;
 import android.content.Context;
-import android.content.Intent;
-import android.graphics.Paint;
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
-import android.app.AlertDialog;
 import android.net.nsd.NsdManager;
 import android.net.nsd.NsdServiceInfo;
 import android.Manifest;
@@ -22,21 +16,17 @@ import androidx.core.content.ContextCompat;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.widget.AppCompatImageButton;
 import androidx.fragment.app.Fragment;
 
-import com.gitee.connect_screen.job.AcquireShizuku;
 import com.gitee.connect_screen.job.ExitAll;
-import com.gitee.connect_screen.job.ListenOpenglAndPostFrame;
-import com.gitee.connect_screen.shizuku.ShizukuUtils;
 
-import java.util.concurrent.TimeUnit;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import android.util.Log;
+import java.io.OutputStream;
 
 public class MirrorHomeFragment extends Fragment {
     private static final String TAG = "MirrorHomeFragment";
@@ -170,7 +160,18 @@ public class MirrorHomeFragment extends Fragment {
         }
     }
 
+    private void logOnMainThread(String message) {
+        requireActivity().runOnUiThread(() -> {
+            Log.i(TAG, message);
+        });
+    }
+
     private static class RtspConnectionThread extends Thread {
+        private static final byte[] FP_SETUP_REQUEST = new byte[] {
+            0x46, 0x50, 0x4c, 0x59, 0x03, 0x01, 0x01, 0x00,
+            0x00, 0x00, 0x00, 0x04, 0x02, 0x00, 0x01, (byte)0xbb
+        };
+
         private final String host;
         private final int port;
         private final Context context;
@@ -203,15 +204,39 @@ public class MirrorHomeFragment extends Fragment {
                 }
                 
                 // 在主线程显示响应
-                fragment.requireActivity().runOnUiThread(() -> {
-                    Log.i(TAG, "收到响应：" + response.toString());
-                });
+                fragment.logOnMainThread("收到INFO响应：" + response.toString());
+
+                // 发送 FP-SETUP 请求
+                String fpSetupRequest = 
+                    "POST /fp-setup RTSP/1.0\r\n" +
+                    "X-Apple-ET: 32\r\n" +
+                    "Content-Length: 16\r\n" +
+                    "Content-Type: application/octet-stream\r\n" +
+                    "CSeq: 1\r\n" +
+                    "DACP-ID: 2CC18E0712799F6D\r\n" +
+                    "Active-Remote: 1140620407\r\n" +
+                    "User-Agent: AirPlay/775.3.1\r\n\r\n";
+                
+                out.print(fpSetupRequest);
+                out.flush();
+                
+                // 写入16字节的二进制数据
+                OutputStream outputStream = socket.getOutputStream();
+                outputStream.write(FP_SETUP_REQUEST);
+                outputStream.flush();
+
+                // 读取fp-setup响应
+                response = new StringBuilder();
+                while ((line = in.readLine()) != null && !line.isEmpty()) {
+                    response.append(line).append("\n");
+                }
+                
+                // 在主线程显示响应
+                fragment.logOnMainThread("收到FP-SETUP响应：" + response.toString());
                 
                 socket.close();
             } catch (IOException e) {
-                fragment.requireActivity().runOnUiThread(() -> {
-                    Log.e(TAG, "连接失败：" + e.getMessage());
-                });
+                fragment.logOnMainThread("连接失败：" + e.getMessage());
             }
         }
     }

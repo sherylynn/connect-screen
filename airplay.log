@@ -1,0 +1,928 @@
+UxPlay 1.71: An Open-Source AirPlay mirroring and audio-streaming server.
+Audio format 1: AAC-ELD 44100/2
+GStreamer audio pipeline 1: "appsrc name=audio_source ! queue ! avdec_aac ! audioconvert ! audioresample ! volume name=volume ! level ! autoaudiosink sync=true"
+Audio format 2: ALAC 44100/16/2
+GStreamer audio pipeline 2: "appsrc name=audio_source ! queue ! avdec_alac ! audioconvert ! audioresample ! volume name=volume ! level ! autoaudiosink sync=false"
+GStreamer video pipeline 1:
+"appsrc name=video_source ! queue ! h264parse ! decodebin ! videoconvert ! video/x-raw,colorimetry=sRGB,format=RGB  ! videoconvert ! videoscale ! autovideosink name=autovideosink_h264 sync=true"
+Initialized GStreamer video renderer 1
+using system MAC address 00:0c:29:6b:7a:fd
+Initialized server socket(s)
+register_dnssd: advertised AirPlay service with "Features" code = 0x527FFEE6
+GStreamer h264 bus message: autovideosink_h264-actual-sink-xvimage state-changed
+GStreamer: automatically-selected videosink (renderer 1: h264) is "xvimagesink"
+GStreamer h264 bus message: autovideosink_h264 state-changed
+GStreamer h264 bus message: videoscale0 state-changed
+GStreamer h264 bus message: videoconvert1 state-changed
+GStreamer h264 bus message: capsfilter0 state-changed
+GStreamer h264 bus message: videoconvert0 state-changed
+GStreamer h264 bus message: typefind state-changed
+GStreamer h264 bus message: decodebin0 state-changed
+GStreamer h264 bus message: h264parse0 state-changed
+GStreamer h264 bus message: queue2 state-changed
+GStreamer h264 bus message: video_source state-changed
+GStreamer h264 bus message: pipeline2 state-changed
+GStreamer h264 bus message: videoscale0 state-changed
+GStreamer h264 bus message: videoconvert1 state-changed
+GStreamer h264 bus message: capsfilter0 state-changed
+GStreamer h264 bus message: videoconvert0 state-changed
+GStreamer h264 bus message: typefind state-changed
+GStreamer h264 bus message: h264parse0 state-changed
+GStreamer h264 bus message: src stream-status
+GStreamer h264 bus message: queue2 state-changed
+GStreamer h264 bus message: src stream-status
+GStreamer h264 bus message: video_source state-changed
+GStreamer h264 bus message: pipeline2 state-changed
+GStreamer h264 bus message: src stream-status
+GStreamer h264 bus message: pipeline2 new-clock
+GStreamer h264 bus message: videoscale0 state-changed
+GStreamer h264 bus message: videoconvert1 state-changed
+GStreamer h264 bus message: capsfilter0 state-changed
+GStreamer h264 bus message: videoconvert0 state-changed
+GStreamer h264 bus message: h264parse0 state-changed
+GStreamer h264 bus message: queue2 state-changed
+GStreamer h264 bus message: video_source state-changed
+GStreamer h264 bus message: src stream-status
+GStreamer h264 bus message: h264parse1 state-changed
+GStreamer h264 bus message: h264parse1 state-changed
+GStreamer h264 bus message: avdec_h264-0 state-changed
+GStreamer h264 bus message: avdec_h264-0 state-changed
+Accepted IPv6 client on socket 25
+Local : 2409:8a38:0c90:fa51:b15f:413c:ff41:5682
+Remote: 2409:8a38:0c90:fa51:c076:f5b9:213e:72ff
+Open connections: 1
+new request, connection 0, socket 25 type Unknown
+httpd receiving on socket 25, connection 0
+
+httpd: current connections:
+connection 0 type 0 socket 25  conn 0x739318000b70 Unknown ACTIVE CONNECTION
+ 
+httpd request received on socket 25, connection 0, method = GET, url = /info, protocol = RTSP/1.0
+conn_request
+New connection 0x739318000b70 identified as Connection type RAOP
+
+GET /info RTSP/1.0
+X-Apple-ProtocolVersion: 1
+Content-Length: 70
+Content-Type: application/x-apple-binary-plist
+CSeq: 0
+DACP-ID: 2CC18E0712799F6D
+Active-Remote: 1140620407
+User-Agent: AirPlay/775.3.1
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>qualifier</key>
+	<array>
+		<string>txtAirPlay</string>
+	</array>
+</dict>
+</plist>
+
+Handling request GET with URL /info
+
+RTSP/1.0 200 OK 
+Audio-Jack-Status: connected; type=digital 
+Content-Type: application/x-apple-binary-plist 
+Server: AirTunes/220.68 
+CSeq: 0 
+Content-Length: 1096 
+ 
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>deviceID</key>
+	<string>00:0c:29:6b:7a:fd</string>
+	<key>pk</key>
+	<data>
+	Ftz6ELxD9cDiENs1Xvk/Nu0IbQfKAIkWcEoTGjus5cM=
+	</data>
+	<key>txtAirPlay</key>
+	<data>
+	GmRldmljZWlkPTAwOjBjOjI5OjZiOjdhOmZkF2ZlYXR1cmVzPTB4NTI3RkZFRTYsMHgw
+	CWZsYWdzPTB4NBBtb2RlbD1BcHBsZVRWMywyQ3BrPTE2ZGNmYTEwYmM0M2Y1YzBlMjEw
+	ZGIzNTVlZjkzZjM2ZWQwODZkMDdjYTAwODkxNjcwNGExMzFhM2JhY2U1YzMIcHc9ZmFs
+	c2UncGk9MmUzODgwMDYtMTNiYS00MDQxLTlhNjctMjVkZDRhNDNkNTM2DnNyY3ZlcnM9
+	MjIwLjY4BHZ2PTI=
+	</data>
+	<key>features</key>
+	<integer>1384120038</integer>
+	<key>name</key>
+	<string>UxPlay@taowen-ubuntu</string>
+	<key>audioLatencies</key>
+	<array>
+		<dict>
+			<key>type</key>
+			<integer>100</integer>
+			<key>inputLatencyMicros</key>
+			<integer>0</integer>
+			<key>audioType</key>
+			<string>default</string>
+			<key>outputLatencyMicros</key>
+			<false/>
+		</dict>
+		<dict>
+			<key>type</key>
+			<integer>101</integer>
+			<key>audioType</key>
+			<string>default</string>
+			<key>inputLatencyMicros</key>
+			<integer>0</integer>
+			<key>outputLatencyMicros</key>
+			<false/>
+		</dict>
+	</array>
+	<key>audioFormats</key>
+	<array>
+		<dict>
+			<key>audioOutputFormats</key>
+			<integer>67108860</integer>
+			<key>type</key>
+			<integer>100</integer>
+			<key>audioInputFormats</key>
+			<integer>67108860</integer>
+		</dict>
+		<dict>
+			<key>audioOutputFormats</key>
+			<integer>67108860</integer>
+			<key>type</key>
+			<integer>101</integer>
+			<key>audioInputFormats</key>
+			<integer>67108860</integer>
+		</dict>
+	</array>
+	<key>pi</key>
+	<string>2e388006-13ba-4041-9a67-25dd4a43d536</string>
+	<key>vv</key>
+	<integer>2</integer>
+	<key>statusFlags</key>
+	<integer>68</integer>
+	<key>keepAliveLowPower</key>
+	<integer>1</integer>
+	<key>sourceVersion</key>
+	<string>220.68</string>
+	<key>keepAliveSendStatsAsBody</key>
+	<true/>
+	<key>model</key>
+	<string>AppleTV3,2</string>
+	<key>macAddress</key>
+	<string>00:0c:29:6b:7a:fd</string>
+	<key>displays</key>
+	<array>
+		<dict>
+			<key>uuid</key>
+			<string>e0ff8a27-6738-3d56-8a16-cc53aacee925</string>
+			<key>widthPhysical</key>
+			<integer>0</integer>
+			<key>heightPhysical</key>
+			<integer>0</integer>
+			<key>width</key>
+			<integer>1920</integer>
+			<key>height</key>
+			<integer>1080</integer>
+			<key>widthPixels</key>
+			<integer>1920</integer>
+			<key>heightPixels</key>
+			<integer>1080</integer>
+			<key>rotation</key>
+			<false/>
+			<key>refreshRate</key>
+			<real>0.016666666666666666</real>
+			<key>maxFPS</key>
+			<integer>30</integer>
+			<key>overscanned</key>
+			<false/>
+			<key>features</key>
+			<integer>14</integer>
+		</dict>
+	</array>
+</dict>
+</plist>
+
+new request, connection 0, socket 25 type RAOP
+httpd receiving on socket 25, connection 0
+
+httpd: current connections:
+connection 0 type 1 socket 25  conn 0x739318000b70 RAOP ACTIVE CONNECTION
+ 
+httpd request received on socket 25, connection 0, method = POST, url = /fp-setup, protocol = RTSP/1.0
+conn_request
+
+POST /fp-setup RTSP/1.0
+X-Apple-ET: 32
+Content-Length: 16
+Content-Type: application/octet-stream
+CSeq: 1
+DACP-ID: 2CC18E0712799F6D
+Active-Remote: 1140620407
+User-Agent: AirPlay/775.3.1
+
+46 50 4c 59 03 01 01 00 00 00 00 04 02 00 01 bb 
+
+Handling request POST with URL /fp-setup
+
+RTSP/1.0 200 OK 
+Audio-Jack-Status: connected; type=digital 
+Content-Type: application/octet-stream 
+Server: AirTunes/220.68 
+CSeq: 1 
+Content-Length: 142 
+ 
+
+46 50 4c 59 03 01 02 00 00 00 00 82 02 01 cf 32 
+a2 57 14 b2 52 4f 8a a0 ad 7a f1 64 e3 7b cf 44 
+24 e2 00 04 7e fc 0a d6 7a fc d9 5d ed 1c 27 30 
+bb 59 1b 96 2e d6 3a 9c 4d ed 88 ba 8f c7 8d e6 
+4d 91 cc fd 5c 7b 56 da 88 e3 1f 5c ce af c7 43 
+19 95 a0 16 65 a5 4e 19 39 d2 5b 94 db 64 b9 e4 
+5d 8d 06 3e 1e 6a f0 7e 96 56 16 2b 0e fa 40 42 
+75 ea 5a 44 d9 59 1c 72 56 b9 fb e6 51 38 98 b8 
+02 27 72 19 88 57 16 50 94 2a d9 46 68 8a 
+
+new request, connection 0, socket 25 type RAOP
+httpd receiving on socket 25, connection 0
+
+httpd: current connections:
+connection 0 type 1 socket 25  conn 0x739318000b70 RAOP ACTIVE CONNECTION
+ 
+httpd request received on socket 25, connection 0, method = POST, url = /fp-setup, protocol = RTSP/1.0
+conn_request
+
+POST /fp-setup RTSP/1.0
+X-Apple-ET: 32
+Content-Length: 164
+Content-Type: application/octet-stream
+CSeq: 2
+DACP-ID: 2CC18E0712799F6D
+Active-Remote: 1140620407
+User-Agent: AirPlay/775.3.1
+
+46 50 4c 59 03 01 03 00 00 00 00 98 01 8f 1a 9c 
+af 6c 47 49 f8 b2 09 ba df e3 67 f9 7d 85 f7 0d 
+d6 80 67 dd 33 ca 4a 57 e7 3c af a4 af 28 72 b1 
+04 f0 ab 6b b0 2b 5b 5d 40 5f fd a7 05 ae 0e 78 
+be f7 eb 9f 43 cd 90 e1 13 79 db fc ca c4 54 ac 
+86 42 c9 db 4e 2e af 47 ef df cd 09 fa 3f b8 78 
+a0 b8 1d d3 85 09 f6 6c 46 49 9b cf c6 d9 f0 a3 
+7c fd f7 c9 ac 16 5c 4e ce 3f ae b9 e1 de 06 b8 
+d7 d9 4d 43 ab 8c ad 8d bb 6a ca f3 47 21 1e ee 
+f2 4d ee 5f b2 19 ce 44 0d 79 63 8f d8 1d bd b4 
+b9 56 ba f4 
+
+Handling request POST with URL /fp-setup
+
+RTSP/1.0 200 OK 
+Audio-Jack-Status: connected; type=digital 
+Content-Type: application/octet-stream 
+Server: AirTunes/220.68 
+CSeq: 2 
+Content-Length: 32 
+ 
+
+46 50 4c 59 03 01 04 00 00 00 00 14 f2 4d ee 5f 
+b2 19 ce 44 0d 79 63 8f d8 1d bd b4 b9 56 ba f4 
+
+new request, connection 0, socket 25 type RAOP
+httpd receiving on socket 25, connection 0
+
+httpd: current connections:
+connection 0 type 1 socket 25  conn 0x739318000b70 RAOP ACTIVE CONNECTION
+ 
+httpd request received on socket 25, connection 0, method = SETUP, url = rtsp://2409:8a38:c90:fa51:b15f:413c:ff41:5682/709908614630099013, protocol = RTSP/1.0
+conn_request
+
+SETUP rtsp://2409:8a38:c90:fa51:b15f:413c:ff41:5682/709908614630099013 RTSP/1.0
+Content-Length: 623
+Content-Type: application/x-apple-binary-plist
+CSeq: 3
+DACP-ID: 2CC18E0712799F6D
+Active-Remote: 1140620407
+User-Agent: AirPlay/775.3.1
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>et</key>
+	<integer>32</integer>
+	<key>statsCollectionEnabled</key>
+	<false/>
+	<key>eiv</key>
+	<data>
+	SR3Us18zUP+dM7tX2CapMQ==
+	</data>
+	<key>sessionUUID</key>
+	<string>09DA1A1F-AE04-4845-B404-7FBAF046D7D5</string>
+	<key>timingProtocol</key>
+	<string>NTP</string>
+	<key>osName</key>
+	<string>iPhone OS</string>
+	<key>osBuildVersion</key>
+	<string>21G93</string>
+	<key>sourceVersion</key>
+	<string>775.3.1</string>
+	<key>timingPort</key>
+	<integer>55606</integer>
+	<key>isScreenMirroringSession</key>
+	<true/>
+	<key>osVersion</key>
+	<string>17.6.1</string>
+	<key>ekey</key>
+	<data>
+	RlBMWQECAQAAAAA8AAAAAJkBYx+MhWFfX7SWE1/KGIQAAAAQRk8i+JxY/UiO0KQ6YaNn
+	9LfVDlQB04zcOPjatJZbPOMVUtTs
+	</data>
+	<key>sessionCorrelationUUID</key>
+	<string>22E39508-74C6-4BCE-8685-AB01DB111C21</string>
+	<key>deviceID</key>
+	<string>08:FF:44:5D:A5:1E</string>
+	<key>model</key>
+	<string>iPad14,2</string>
+	<key>name</key>
+	<string>舒舒平板</string>
+	<key>macAddress</key>
+	<string>26:59:51:2E:80:25</string>
+</dict>
+</plist>
+
+Handling request SETUP with URL rtsp://2409:8a38:c90:fa51:b15f:413c:ff41:5682/709908614630099013
+DACP-ID: 2CC18E0712799F6D
+Active-Remote: 1140620407
+SETUP 1
+connection request from 舒舒平板 (iPad14,2) with deviceID = 08:FF:44:5D:A5:1E
+
+eiv_len = 16
+16 byte aesiv (needed for AES-CBC audio decryption iv):
+49 1d d4 b3 5f 33 50 ff 9d 33 bb 57 d8 26 a9 31 
+
+ekey_len = 72
+ekey:
+46 50 4c 59 01 02 01 00 00 00 00 3c 00 00 00 00 
+99 01 63 1f 8c 85 61 5f 5f b4 96 13 5f ca 18 84 
+00 00 00 10 46 4f 22 f8 9c 58 fd 48 8e d0 a4 3a 
+61 a3 67 f4 b7 d5 0e 54 01 d3 8c dc 38 f8 da b4 
+96 5b 3c e3 15 52 d4 ec 
+
+fairplay_decrypt ret = 0
+16 byte aeskey (fairplay-decrypted from ekey):
+46 a9 a7 4a 0d bf 2b 58 a1 92 1c 26 f7 66 77 2d 
+
+Client identified as User-Agent: AirPlay/775.3.1
+timing_rport = 55606
+raop_ntp parse remote ip = 2409:8a38:0c90:fa51:c076:f5b9:213e:72ff
+raop_ntp starting time
+raop_ntp local timing port socket 26 port UDP 53577
+
+raop_ntp send time type_t=82 packetlen = 32, now = 1737777440.138850
+80 d2 00 07 00 00 00 00 00 00 00 00 00 00 00 00 
+00 00 00 00 00 00 00 00 eb 3e df a0 23 8b aa e1 
+
+raop_rtp parse remote ip = 2409:8a38:0c90:fa51:c076:f5b9:213e:72ff
+raop_rtp_mirror parse remote ip = 2409:8a38:0c90:fa51:c076:f5b9:213e:72ff
+eport = 0, tport = 53577
+
+RTSP/1.0 200 OK 
+Audio-Jack-Status: connected; type=digital 
+Content-Type: application/x-apple-binary-plist 
+Server: AirTunes/220.68 
+CSeq: 3 
+Content-Length: 76 
+ 
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>timingPort</key>
+	<integer>53577</integer>
+	<key>eventPort</key>
+	<integer>0</integer>
+</dict>
+</plist>
+
+raop_ntp receive time type_t=83 packetlen = 32, now = 1737777440.147060 t1 = 2006895.407245, t2 = 2006895.407382
+80 d3 00 07 00 00 00 00 eb 3e df a0 23 8b aa e1 
+83 c9 1d ef 68 41 3d 04 83 c9 1d ef 68 4a 2a 37 
+
+raop_ntp sync correction = -1735770544735641550
+new request, connection 0, socket 25 type RAOP
+httpd receiving on socket 25, connection 0
+
+httpd: current connections:
+connection 0 type 1 socket 25  conn 0x739318000b70 RAOP ACTIVE CONNECTION
+ 
+httpd request received on socket 25, connection 0, method = GET, url = /info, protocol = RTSP/1.0
+conn_request
+
+GET /info RTSP/1.0
+X-Apple-ProtocolVersion: 1
+CSeq: 4
+DACP-ID: 2CC18E0712799F6D
+Active-Remote: 1140620407
+User-Agent: AirPlay/775.3.1
+
+Handling request GET with URL /info
+
+RTSP/1.0 200 OK 
+Audio-Jack-Status: connected; type=digital 
+Content-Type: application/x-apple-binary-plist 
+Server: AirTunes/220.68 
+CSeq: 4 
+Content-Length: 1096 
+ 
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>deviceID</key>
+	<string>00:0c:29:6b:7a:fd</string>
+	<key>pk</key>
+	<data>
+	Ftz6ELxD9cDiENs1Xvk/Nu0IbQfKAIkWcEoTGjus5cM=
+	</data>
+	<key>txtAirPlay</key>
+	<data>
+	GmRldmljZWlkPTAwOjBjOjI5OjZiOjdhOmZkF2ZlYXR1cmVzPTB4NTI3RkZFRTYsMHgw
+	CWZsYWdzPTB4NBBtb2RlbD1BcHBsZVRWMywyQ3BrPTE2ZGNmYTEwYmM0M2Y1YzBlMjEw
+	ZGIzNTVlZjkzZjM2ZWQwODZkMDdjYTAwODkxNjcwNGExMzFhM2JhY2U1YzMIcHc9ZmFs
+	c2UncGk9MmUzODgwMDYtMTNiYS00MDQxLTlhNjctMjVkZDRhNDNkNTM2DnNyY3ZlcnM9
+	MjIwLjY4BHZ2PTI=
+	</data>
+	<key>features</key>
+	<integer>1384120038</integer>
+	<key>name</key>
+	<string>UxPlay@taowen-ubuntu</string>
+	<key>audioLatencies</key>
+	<array>
+		<dict>
+			<key>type</key>
+			<integer>100</integer>
+			<key>inputLatencyMicros</key>
+			<integer>0</integer>
+			<key>audioType</key>
+			<string>default</string>
+			<key>outputLatencyMicros</key>
+			<false/>
+		</dict>
+		<dict>
+			<key>type</key>
+			<integer>101</integer>
+			<key>audioType</key>
+			<string>default</string>
+			<key>inputLatencyMicros</key>
+			<integer>0</integer>
+			<key>outputLatencyMicros</key>
+			<false/>
+		</dict>
+	</array>
+	<key>audioFormats</key>
+	<array>
+		<dict>
+			<key>audioOutputFormats</key>
+			<integer>67108860</integer>
+			<key>type</key>
+			<integer>100</integer>
+			<key>audioInputFormats</key>
+			<integer>67108860</integer>
+		</dict>
+		<dict>
+			<key>audioOutputFormats</key>
+			<integer>67108860</integer>
+			<key>type</key>
+			<integer>101</integer>
+			<key>audioInputFormats</key>
+			<integer>67108860</integer>
+		</dict>
+	</array>
+	<key>pi</key>
+	<string>2e388006-13ba-4041-9a67-25dd4a43d536</string>
+	<key>vv</key>
+	<integer>2</integer>
+	<key>statusFlags</key>
+	<integer>68</integer>
+	<key>keepAliveLowPower</key>
+	<integer>1</integer>
+	<key>sourceVersion</key>
+	<string>220.68</string>
+	<key>keepAliveSendStatsAsBody</key>
+	<true/>
+	<key>model</key>
+	<string>AppleTV3,2</string>
+	<key>macAddress</key>
+	<string>00:0c:29:6b:7a:fd</string>
+	<key>displays</key>
+	<array>
+		<dict>
+			<key>uuid</key>
+			<string>e0ff8a27-6738-3d56-8a16-cc53aacee925</string>
+			<key>widthPhysical</key>
+			<integer>0</integer>
+			<key>heightPhysical</key>
+			<integer>0</integer>
+			<key>width</key>
+			<integer>1920</integer>
+			<key>height</key>
+			<integer>1080</integer>
+			<key>widthPixels</key>
+			<integer>1920</integer>
+			<key>heightPixels</key>
+			<integer>1080</integer>
+			<key>rotation</key>
+			<false/>
+			<key>refreshRate</key>
+			<real>0.016666666666666666</real>
+			<key>maxFPS</key>
+			<integer>30</integer>
+			<key>overscanned</key>
+			<false/>
+			<key>features</key>
+			<integer>14</integer>
+		</dict>
+	</array>
+</dict>
+</plist>
+
+new request, connection 0, socket 25 type RAOP
+httpd receiving on socket 25, connection 0
+
+httpd: current connections:
+connection 0 type 1 socket 25  conn 0x739318000b70 RAOP ACTIVE CONNECTION
+ 
+httpd request received on socket 25, connection 0, method = GET_PARAMETER, url = rtsp://2409:8a38:c90:fa51:b15f:413c:ff41:5682/709908614630099013, protocol = RTSP/1.0
+conn_request
+
+GET_PARAMETER rtsp://2409:8a38:c90:fa51:b15f:413c:ff41:5682/709908614630099013 RTSP/1.0
+Content-Length: 8
+Content-Type: text/parameters
+CSeq: 5
+DACP-ID: 2CC18E0712799F6D
+Active-Remote: 1140620407
+User-Agent: AirPlay/775.3.1
+
+volume 
+
+Handling request GET_PARAMETER with URL rtsp://2409:8a38:c90:fa51:b15f:413c:ff41:5682/709908614630099013
+
+RTSP/1.0 200 OK 
+Audio-Jack-Status: connected; type=digital 
+Content-Type: text/parameters 
+Server: AirTunes/220.68 
+CSeq: 5 
+Content-Length: 13 
+ 
+
+volume: 0.0 
+
+new request, connection 0, socket 25 type RAOP
+httpd receiving on socket 25, connection 0
+
+httpd: current connections:
+connection 0 type 1 socket 25  conn 0x739318000b70 RAOP ACTIVE CONNECTION
+ 
+httpd request received on socket 25, connection 0, method = RECORD, url = rtsp://2409:8a38:c90:fa51:b15f:413c:ff41:5682/709908614630099013, protocol = RTSP/1.0
+conn_request
+
+RECORD rtsp://2409:8a38:c90:fa51:b15f:413c:ff41:5682/709908614630099013 RTSP/1.0
+CSeq: 6
+DACP-ID: 2CC18E0712799F6D
+Active-Remote: 1140620407
+User-Agent: AirPlay/775.3.1
+
+Handling request RECORD with URL rtsp://2409:8a38:c90:fa51:b15f:413c:ff41:5682/709908614630099013
+raop_handler_record
+
+RTSP/1.0 200 OK 
+Audio-Latency: 11025 
+Audio-Jack-Status: connected; type=analog 
+Server: AirTunes/220.68 
+CSeq: 6 
+
+new request, connection 0, socket 25 type RAOP
+httpd receiving on socket 25, connection 0
+
+httpd: current connections:
+connection 0 type 1 socket 25  conn 0x739318000b70 RAOP ACTIVE CONNECTION
+ 
+httpd request received on socket 25, connection 0, method = SETUP, url = rtsp://2409:8a38:c90:fa51:b15f:413c:ff41:5682/709908614630099013, protocol = RTSP/1.0
+conn_request
+
+SETUP rtsp://2409:8a38:c90:fa51:b15f:413c:ff41:5682/709908614630099013 RTSP/1.0
+Content-Length: 204
+Content-Type: application/x-apple-binary-plist
+CSeq: 7
+DACP-ID: 2CC18E0712799F6D
+Active-Remote: 1140620407
+User-Agent: AirPlay/775.3.1
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>streams</key>
+	<array>
+		<dict>
+			<key>timestampInfo</key>
+			<array>
+				<dict>
+					<key>name</key>
+					<string>SubSu</string>
+				</dict>
+				<dict>
+					<key>name</key>
+					<string>BePxT</string>
+				</dict>
+				<dict>
+					<key>name</key>
+					<string>AfPxT</string>
+				</dict>
+				<dict>
+					<key>name</key>
+					<string>BefEn</string>
+				</dict>
+				<dict>
+					<key>name</key>
+					<string>EmEnc</string>
+				</dict>
+			</array>
+			<key>latencyMs</key>
+			<integer>100</integer>
+			<key>type</key>
+			<integer>110</integer>
+			<key>streamConnectionID</key>
+			<integer>7360034197512602439</integer>
+		</dict>
+	</array>
+</dict>
+</plist>
+
+Handling request SETUP with URL rtsp://2409:8a38:c90:fa51:b15f:413c:ff41:5682/709908614630099013
+DACP-ID: 2CC18E0712799F6D
+Active-Remote: 1140620407
+type = 110
+streamConnectionID (needed for AES-CTR video decryption key and iv): 7360034197512602439
+raop_rtp_mirror starting mirroring
+raop_rtp_mirror local data port socket 27 port TCP 45135
+Mirroring initialized successfully
+
+RTSP/1.0 200 OK 
+Audio-Jack-Status: connected; type=digital 
+Content-Type: application/x-apple-binary-plist 
+Server: AirTunes/220.68 
+CSeq: 7 
+Content-Length: 85 
+ 
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>streams</key>
+	<array>
+		<dict>
+			<key>dataPort</key>
+			<integer>45135</integer>
+			<key>type</key>
+			<integer>110</integer>
+		</dict>
+	</array>
+</dict>
+</plist>
+
+raop_rtp_mirror accepting client
+
+Received unencrypted codec packet from client: payload_size 37 header 01 00 16 01  ts_client = 2006895.756387
+raop_rtp_mirror: unidentified extra header data  137.000000, 0.000000
+begin video stream wxh = 1646x1080; source 1646x1080
+raop_rtp_mirror width_source = 1646.000000 height_source = 1080.000000 width = 1646.000000 height = 1080.000000
+raop_rtp_mirror: SPS+PPS header size = 6
+raop_rtp_mirror h264 SPS+PPS header:
+01 64 00 28 ff e1 
+
+raop_rtp_mirror SPS NAL size = 18
+raop_rtp_mirror h264 Sequence Parameter Set:
+27 64 00 28 ac 13 14 50 19 c0 89 ea 59 b8 08 08 
+08 10 
+
+raop_rtp_mirror PPS NAL size = 4
+raop_rtp_mirror h264 Picture Parameter Set:
+28 ee 3c b0 
+
+remainder size = 4
+remainder of SPS+PPS packet:
+02 00 00 00 
+
+raop_rtp video: now = 1737777440.538579, ntp = 1737777440.492029, latency = 0.046550, ts = 2006895.756387, 00 10 00 00  h264
+Begin streaming to GStreamer video pipeline
+Looking for X11 UxPlay Window, attempt 1
+raop_rtp video: now = 1737777440.549598, ntp = 1737777440.542035, latency = 0.007564, ts = 2006895.806393, 00 00 00 00  h264
+Looking for X11 UxPlay Window, attempt 2
+GStreamer h264 bus message: decodebin0 state-changed
+GStreamer h264 bus message: pipeline2 stream-start
+GStreamer h264 bus message: autovideosink_h264-actual-sink-xvimage element
+raop_rtp video: now = 1737777440.555149, ntp = 1737777440.575372, latency = -0.020223, ts = 2006895.839730, 00 00 00 00  h264
+Looking for X11 UxPlay Window, attempt 3
+GStreamer h264 bus message: autovideosink_h264-actual-sink-xvimage element
+
+*** X11 Windows: Use key F11 or (left Alt)+Enter to toggle full-screen mode
+
+GStreamer h264 bus message: autovideosink_h264-actual-sink-xvimage tag
+GStreamer h264 bus message: autovideosink_h264-actual-sink-xvimage tag
+raop_rtp video: now = 1737777440.567664, ntp = 1737777440.608709, latency = -0.041045, ts = 2006895.873067, 00 00 00 00  h264
+raop_rtp video: now = 1737777440.567703, ntp = 1737777440.642045, latency = -0.074343, ts = 2006895.906404, 00 00 00 00  h264
+GStreamer h264 bus message: autovideosink_h264-actual-sink-xvimage state-changed
+GStreamer h264 bus message: autovideosink_h264 state-changed
+GStreamer h264 bus message: pipeline2 async-done
+GStreamer h264 bus message: autovideosink_h264-actual-sink-xvimage latency
+GStreamer h264 bus message: autovideosink_h264-actual-sink-xvimage state-changed
+GStreamer h264 bus message: autovideosink_h264 state-changed
+GStreamer h264 bus message: avdec_h264-0 state-changed
+GStreamer h264 bus message: capsfilter1 state-changed
+GStreamer h264 bus message: h264parse1 state-changed
+GStreamer h264 bus message: typefind state-changed
+GStreamer h264 bus message: decodebin0 state-changed
+GStreamer h264 bus message: pipeline2 state-changed
+GStreamer h264 bus message: autovideosink_h264-actual-sink-xvimage qos
+GStreamer h264 bus message: autovideosink_h264-actual-sink-xvimage qos
+GStreamer h264 bus message: avdec_h264-0 qos
+GStreamer h264 bus message: avdec_h264-0 qos
+raop_rtp video: now = 1737777440.648732, ntp = 1737777440.675383, latency = -0.026650, ts = 2006895.939741, 00 00 00 00  h264
+raop_rtp video: now = 1737777440.650677, ntp = 1737777440.708720, latency = -0.058042, ts = 2006895.973078, 00 00 00 00  h264
+raop_rtp video: now = 1737777440.650728, ntp = 1737777440.742057, latency = -0.091329, ts = 2006896.006415, 00 00 00 00  h264
+GStreamer h264 bus message: avdec_h264-0 qos
+raop_rtp video: now = 1737777440.754896, ntp = 1737777440.775394, latency = -0.020498, ts = 2006896.039752, 00 00 00 00  h264
+raop_rtp video: now = 1737777440.754965, ntp = 1737777440.808731, latency = -0.053766, ts = 2006896.073089, 00 00 00 00  h264
+raop_rtp video: now = 1737777440.870301, ntp = 1737777440.842064, latency = 0.028236, ts = 2006896.106423, 00 00 00 00  h264
+raop_rtp video: now = 1737777440.870366, ntp = 1737777440.875398, latency = -0.005032, ts = 2006896.139756, 00 00 00 00  h264
+raop_rtp video: now = 1737777440.870382, ntp = 1737777440.908731, latency = -0.038349, ts = 2006896.173089, 00 00 00 00  h264
+GStreamer h264 bus message: avdec_h264-0 qos
+raop_rtp video: now = 1737777440.955764, ntp = 1737777440.942065, latency = 0.013700, ts = 2006896.206423, 00 00 00 00  h264
+raop_rtp video: now = 1737777440.955820, ntp = 1737777440.975398, latency = -0.019578, ts = 2006896.239756, 00 00 00 00  h264
+raop_rtp video: now = 1737777440.955836, ntp = 1737777441.008731, latency = -0.052895, ts = 2006896.273089, 00 00 00 00  h264
+raop_rtp video: now = 1737777441.050155, ntp = 1737777441.042064, latency = 0.008091, ts = 2006896.306423, 00 00 00 00  h264
+raop_rtp video: now = 1737777441.050205, ntp = 1737777441.075398, latency = -0.025192, ts = 2006896.339756, 00 00 00 00  h264
+raop_rtp video: now = 1737777441.050214, ntp = 1737777441.125433, latency = -0.075219, ts = 2006896.389792, 00 00 00 00  h264
+raop_rtp video: now = 1737777441.152891, ntp = 1737777441.158767, latency = -0.005875, ts = 2006896.423125, 00 00 00 00  h264
+raop_rtp video: now = 1737777441.152970, ntp = 1737777441.192100, latency = -0.039130, ts = 2006896.456458, 00 00 00 00  h264
+raop_rtp video: now = 1737777441.166285, ntp = 1737777441.225433, latency = -0.059148, ts = 2006896.489792, 00 00 00 00  h264
+raop_rtp video: now = 1737777441.255991, ntp = 1737777441.258767, latency = -0.002776, ts = 2006896.523125, 00 00 00 00  h264
+raop_rtp video: now = 1737777441.256047, ntp = 1737777441.292100, latency = -0.036053, ts = 2006896.556458, 00 00 00 00  h264
+raop_rtp video: now = 1737777441.267423, ntp = 1737777441.325433, latency = -0.058011, ts = 2006896.589792, 00 00 00 00  h264
+raop_rtp video: now = 1737777441.357450, ntp = 1737777441.358767, latency = -0.001317, ts = 2006896.623125, 00 00 00 00  h264
+raop_rtp video: now = 1737777441.461263, ntp = 1737777441.392100, latency = 0.069164, ts = 2006896.656458, 00 00 00 00  h264
+raop_rtp video: now = 1737777441.461314, ntp = 1737777441.425433, latency = 0.035881, ts = 2006896.689792, 00 00 00 00  h264
+
+Received video streaming performance info packet from client: payload_size 194 header 05 00 00 00  ts_raw = 0
+raop_rtp video: now = 1737777441.461327, ntp = 1737777441.492141, latency = -0.030814, ts = 2006896.756500, 00 00 00 00  h264
+raop_rtp video: now = 1737777441.461338, ntp = 1737777441.558815, latency = -0.097478, ts = 2006896.823174, 00 00 00 00  h264
+GStreamer h264 bus message: autovideosink_h264-actual-sink-xvimage qos
+GStreamer h264 bus message: avdec_h264-0 qos
+GStreamer h264 bus message: avdec_h264-0 qos
+new request, connection 0, socket 25 type RAOP
+raop_rtp video: now = 1737777441.565224, ntp = 1737777441.592149, latency = -0.026925, ts = 2006896.856507, 00 00 00 00  h264
+httpd receiving on socket 25, connection 0
+
+httpd: current connections:
+connection 0 type 1 socket 25  conn 0x739318000b70 RAOP ACTIVE CONNECTION
+ 
+httpd request received on socket 25, connection 0, method = TEARDOWN, url = rtsp://2409:8a38:c90:fa51:b15f:413c:ff41:5682/709908614630099013, protocol = RTSP/1.0
+conn_request
+
+TEARDOWN rtsp://2409:8a38:c90:fa51:b15f:413c:ff41:5682/709908614630099013 RTSP/1.0
+raop_rtp_mirror tcp socket was closed by client (recv returned 0); got 0 bytes of 128 byte header
+Content-Length: 69
+Content-Type: application/x-apple-binary-plist
+CSeq: 8
+DACP-ID: 2CC18E0712799F6D
+Active-Remote: 1140620407
+User-Agent: AirPlay/775.3.1
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>streams</key>
+	<array>
+		<dict>
+			<key>type</key>
+			<integer>110</integer>
+		</dict>
+	</array>
+</dict>
+</plist>
+
+Handling request TEARDOWN with URL rtsp://2409:8a38:c90:fa51:b15f:413c:ff41:5682/709908614630099013
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>streams</key>
+	<array>
+		<dict>
+			<key>type</key>
+			<integer>110</integer>
+		</dict>
+	</array>
+</dict>
+</plist>
+
+TEARDOWN request,  96=0, 110=1
+raop_rtp_mirror->running is no longer true
+raop_rtp_mirror exiting TCP thread
+
+RTSP/1.0 200 OK 
+Audio-Jack-Status: connected; type=digital 
+Connection: close 
+Server: AirTunes/220.68 
+CSeq: 8 
+
+new request, connection 0, socket 25 type RAOP
+httpd receiving on socket 25, connection 0
+
+httpd: current connections:
+connection 0 type 1 socket 25  conn 0x739318000b70 RAOP ACTIVE CONNECTION
+ 
+httpd request received on socket 25, connection 0, method = TEARDOWN, url = rtsp://2409:8a38:c90:fa51:b15f:413c:ff41:5682/709908614630099013, protocol = RTSP/1.0
+conn_request
+
+TEARDOWN rtsp://2409:8a38:c90:fa51:b15f:413c:ff41:5682/709908614630099013 RTSP/1.0
+Content-Length: 42
+Content-Type: application/x-apple-binary-plist
+CSeq: 9
+DACP-ID: 2CC18E0712799F6D
+Active-Remote: 1140620407
+User-Agent: AirPlay/775.3.1
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict/>
+</plist>
+
+Handling request TEARDOWN with URL rtsp://2409:8a38:c90:fa51:b15f:413c:ff41:5682/709908614630099013
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict/>
+</plist>
+
+TEARDOWN request,  96=0, 110=0
+
+RTSP/1.0 200 OK 
+Audio-Jack-Status: connected; type=digital 
+Connection: close 
+Server: AirTunes/220.68 
+CSeq: 9 
+
+Destroying connection
+Open connections: 0
+raop_ntp stopping time thread
+raop_ntp exiting thread
+raop_ntp stopped time thread
+GStreamer video pipeline 1:
+"appsrc name=video_source ! queue ! h264parse ! decodebin ! videoconvert ! video/x-raw,colorimetry=sRGB,format=RGB  ! videoconvert ! videoscale ! autovideosink name=autovideosink_h264 sync=true"
+Initialized GStreamer video renderer 1
+GStreamer h264 bus message: autovideosink_h264-actual-sink-xvimage state-changed
+GStreamer: automatically-selected videosink (renderer 1: h264) is "xvimagesink"
+GStreamer h264 bus message: autovideosink_h264 state-changed
+GStreamer h264 bus message: videoscale1 state-changed
+GStreamer h264 bus message: videoconvert3 state-changed
+GStreamer h264 bus message: capsfilter2 state-changed
+GStreamer h264 bus message: videoconvert2 state-changed
+GStreamer h264 bus message: typefind state-changed
+GStreamer h264 bus message: decodebin1 state-changed
+GStreamer h264 bus message: h264parse2 state-changed
+GStreamer h264 bus message: queue3 state-changed
+GStreamer h264 bus message: video_source state-changed
+GStreamer h264 bus message: pipeline3 state-changed
+GStreamer h264 bus message: videoscale1 state-changed
+GStreamer h264 bus message: videoconvert3 state-changed
+GStreamer h264 bus message: capsfilter2 state-changed
+GStreamer h264 bus message: videoconvert2 state-changed
+GStreamer h264 bus message: typefind state-changed
+GStreamer h264 bus message: h264parse2 state-changed
+GStreamer h264 bus message: src stream-status
+GStreamer h264 bus message: queue3 state-changed
+GStreamer h264 bus message: src stream-status
+GStreamer h264 bus message: video_source state-changed
+GStreamer h264 bus message: pipeline3 state-changed
+GStreamer h264 bus message: pipeline3 new-clock
+GStreamer h264 bus message: videoscale1 state-changed
+GStreamer h264 bus message: videoconvert3 state-changed
+GStreamer h264 bus message: capsfilter2 state-changed
+GStreamer h264 bus message: videoconvert2 state-changed
+GStreamer h264 bus message: h264parse2 state-changed
+GStreamer h264 bus message: queue3 state-changed
+GStreamer h264 bus message: video_source state-changed
+GStreamer h264 bus message: src stream-status
+GStreamer h264 bus message: src stream-status
+GStreamer h264 bus message: h264parse3 state-changed
+GStreamer h264 bus message: h264parse3 state-changed
+GStreamer h264 bus message: avdec_h264-1 state-changed
+GStreamer h264 bus message: avdec_h264-1 state-changed
+Stopping...
+Exiting HTTP thread
