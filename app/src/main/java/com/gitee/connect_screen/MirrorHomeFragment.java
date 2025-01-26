@@ -218,6 +218,7 @@ public class MirrorHomeFragment extends Fragment {
         @Override
         public void run() {
             try {
+                System.out.println(fragment.stringFromJNI());
                 Socket socket = new Socket(host, port);
                 OutputStream out = socket.getOutputStream();
                 InputStream in = socket.getInputStream();
@@ -332,5 +333,13 @@ public class MirrorHomeFragment extends Fragment {
             }
             return response.toString();
         }
+    }
+
+    // 添加原生方法声明
+    public native String stringFromJNI();
+    
+    // 在类的静态初始化块中加载库
+    static {
+        System.loadLibrary("connect_screen");
     }
 }
