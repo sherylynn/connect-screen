@@ -19,6 +19,9 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.gitee.connect_screen.job.ExitAll;
+import com.dd.plist.PropertyListParser;
+import com.dd.plist.NSDictionary;
+import java.io.ByteArrayInputStream;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -27,6 +30,7 @@ import java.io.PrintWriter;
 import java.net.Socket;
 import android.util.Log;
 import java.io.OutputStream;
+import java.io.InputStream;
 
 public class MirrorHomeFragment extends Fragment {
     private static final String TAG = "MirrorHomeFragment";
@@ -215,36 +219,54 @@ public class MirrorHomeFragment extends Fragment {
         public void run() {
             try {
                 Socket socket = new Socket(host, port);
-                PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-                BufferedReader in = new BufferedReader(
-                    new InputStreamReader(socket.getInputStream()));
+                OutputStream out = socket.getOutputStream();
+                InputStream in = socket.getInputStream();
                 
                 // 发送 RTSP OPTIONS 请求
-                out.print(RTSP_OPTIONS_REQUEST);
+                out.write(RTSP_OPTIONS_REQUEST.getBytes());
                 out.flush();
                 
                 // 读取 OPTIONS 响应
-                StringBuilder response = new StringBuilder();
-                String line;
-                while ((line = in.readLine()) != null && !line.isEmpty()) {
-                    response.append(line).append("\n");
-                }
-                
-                // 在主线程显示 OPTIONS 响应
-                fragment.logOnMainThread("收到 OPTIONS 响应：" + response.toString());
+                String response = readResponse(in);
+                fragment.logOnMainThread("收到 OPTIONS 响应：" + response);
 
                 // 发送 GET /info 请求
-                out.print(INFO_REQUEST);
+                out.write(INFO_REQUEST.getBytes());
                 out.flush();
 
                 // 读取 info 响应
-                response = new StringBuilder();
-                while ((line = in.readLine()) != null && !line.isEmpty()) {
-                    response.append(line).append("\n");
+                response = readResponse(in);
+                fragment.logOnMainThread("解析 info: " + response);
+
+                // 解析响应头中的 Content-Length
+                int contentLength = 0;
+                for (String headerLine : response.split("\n")) {
+                    if (headerLine.startsWith("Content-Length:")) {
+                        contentLength = Integer.parseInt(headerLine.substring("Content-Length:".length()).trim());
+                        break;
+                    }
                 }
-                
-                // 在主线程显示 info 响应
-                fragment.logOnMainThread("收到 INFO 响应：" + response.toString());
+
+                fragment.logOnMainThread("INFO resp content length: " + contentLength);
+
+                // 读取二进制 plist 数据
+                byte[] plistData = new byte[contentLength];
+                int bytesRead = 0;
+                while (bytesRead < contentLength) {
+                    int result = in.read(plistData, bytesRead, contentLength - bytesRead);
+                    if (result == -1) break;
+                    bytesRead += result;
+                }
+
+                fragment.logOnMainThread("INFO bytes read: " + bytesRead);
+
+                // 解析 plist
+                try {
+                    NSDictionary rootDict = (NSDictionary)PropertyListParser.parse(new ByteArrayInputStream(plistData));
+                    fragment.logOnMainThread("解析 INFO plist 内容：" + rootDict.toXMLPropertyList());
+                } catch (Exception e) {
+                    fragment.logOnMainThread("解析 plist 失败：" + e.getMessage());
+                }
 
                 // 发送 FP-SETUP 请求
                 String fpSetupRequest = 
@@ -257,22 +279,14 @@ public class MirrorHomeFragment extends Fragment {
                     "Active-Remote: 1140620407\r\n" +
                     "User-Agent: AirPlay/775.3.1\r\n\r\n";
                 
-                out.print(fpSetupRequest);
+                out.write(fpSetupRequest.getBytes());
                 out.flush();
-                
-                // 写入16字节的二进制数据
-                OutputStream outputStream = socket.getOutputStream();
-                outputStream.write(FP_SETUP_REQUEST);
-                outputStream.flush();
+                out.write(FP_SETUP_REQUEST);
+                out.flush();
 
                 // 读取fp-setup响应
-                response = new StringBuilder();
-                while ((line = in.readLine()) != null && !line.isEmpty()) {
-                    response.append(line).append("\n");
-                }
-                
-                // 在主线程显示响应
-                fragment.logOnMainThread("收到FP-SETUP响应：" + response.toString());
+                response = readResponse(in);
+                fragment.logOnMainThread("收到FP-SETUP响应：" + response);
                 
                 // 发送第二个 FP-SETUP 请求
                 String fpSetupRequest2 = 
@@ -285,26 +299,38 @@ public class MirrorHomeFragment extends Fragment {
                     "Active-Remote: 1140620407\r\n" +
                     "User-Agent: AirPlay/775.3.1\r\n\r\n";
                 
-                out.print(fpSetupRequest2);
+                out.write(fpSetupRequest2.getBytes());
                 out.flush();
-                
-                // 写入164字节的二进制数据
-                outputStream.write(FP_SETUP_REQUEST_2);
-                outputStream.flush();
+                out.write(FP_SETUP_REQUEST_2);
+                out.flush();
 
                 // 读取第二个fp-setup响应
-                response = new StringBuilder();
-                while ((line = in.readLine()) != null && !line.isEmpty()) {
-                    response.append(line).append("\n");
-                }
-                
-                // 在主线程显示响应
-                fragment.logOnMainThread("收到第二个FP-SETUP响应：" + response.toString());
+                response = readResponse(in);
+                fragment.logOnMainThread("收到第二个FP-SETUP响应：" + response);
                 
                 socket.close();
-            } catch (IOException e) {
+            } catch (Exception e) {
                 fragment.logOnMainThread("连接失败：" + e.getMessage());
             }
+        }
+
+        // 新增辅助方法来读取响应
+        private String readResponse(InputStream in) throws IOException {
+            StringBuilder response = new StringBuilder();
+            byte[] buffer = new byte[1];
+            
+            // 读取直到遇到空行（\r\n\r\n）
+            int consecutiveNewlines = 0;
+            while (consecutiveNewlines < 4) {
+                if (in.read(buffer) == -1) break;
+                response.append((char) buffer[0]);
+                if (buffer[0] == '\r' || buffer[0] == '\n') {
+                    consecutiveNewlines++;
+                } else {
+                    consecutiveNewlines = 0;
+                }
+            }
+            return response.toString();
         }
     }
 }
