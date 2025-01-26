@@ -85,6 +85,8 @@ dependencies {
     implementation 'org.bouncycastle:bcprov-jdk15on:1.68'
     implementation 'com.google.zxing:core:3.5.2'
     implementation 'com.googlecode.plist:dd-plist:1.26'
+    implementation 'net.i2p.crypto:eddsa:0.3.0'
+    implementation 'org.whispersystems:curve25519-java:0.5.0'
 }
 
 tasks.withType(JavaCompile) {

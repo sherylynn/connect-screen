@@ -18,6 +18,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.gitee.connect_screen.airplay.OmgHax;
+import com.gitee.connect_screen.airplay.OmgHaxConst;
 import com.gitee.connect_screen.job.ExitAll;
 import com.dd.plist.PropertyListParser;
 import com.dd.plist.NSDictionary;
@@ -67,9 +69,20 @@ public class MirrorHomeFragment extends Fragment {
         });
 
         nsdSearchBtn.setOnClickListener(v -> {
-            if (checkAndRequestPermissions()) {
-                startNsdDiscovery();
+            OmgHaxConst.loadConstByAssetManager(requireContext().getAssets());
+            byte[] eiv = decodeBase64("SR3Us18zUP+dM7tX2CapMQ==");
+            byte[] ekey = decodeBase64("RlBMWQECAQAAAAA8AAAAAJkBYx+MhWFfX7SWE1/KGIQAAAAQRk8i+JxY/UiO0KQ6YaNn9LfVDlQB04zcOPjatJZbPOMVUtTs");
+            byte[] aesKey = playfairDecrypt(RtspConnectionThread.FP_SETUP_REQUEST_2, ekey);
+
+            StringBuilder hexDump = new StringBuilder();
+            for (byte b : aesKey) {
+                hexDump.append(String.format("%02x ", b));
             }
+            System.out.println("解密后的密钥: " + hexDump.toString());
+            System.out.println("Base64编码的密钥: " + android.util.Base64.encodeToString(aesKey, android.util.Base64.DEFAULT));
+            // if (checkAndRequestPermissions()) {
+            //     startNsdDiscovery();
+            // }
         });
 
         return view;
@@ -180,7 +193,7 @@ public class MirrorHomeFragment extends Fragment {
             0x00, 0x00, 0x00, 0x04, 0x02, 0x00, 0x01, (byte)0xbb
         };
 
-        private static final byte[] FP_SETUP_REQUEST_2 = new byte[] {
+        public static final byte[] FP_SETUP_REQUEST_2 = new byte[] {
             0x46, 0x50, 0x4c, 0x59, 0x03, 0x01, 0x03, 0x00, 0x00, 0x00, 0x00, (byte)0x98, 0x01, (byte)0x8f, 0x1a, (byte)0x9c,
             (byte)0xaf, 0x6c, 0x47, 0x49, (byte)0xf8, (byte)0xb2, 0x09, (byte)0xba, (byte)0xdf, (byte)0xe3, 0x67, (byte)0xf9, 0x7d, (byte)0x85, (byte)0xf7, 0x0d,
             (byte)0xd6, (byte)0x80, 0x67, (byte)0xdd, 0x33, (byte)0xca, 0x4a, 0x57, (byte)0xe7, 0x3c, (byte)0xaf, (byte)0xa4, (byte)0xaf, 0x28, 0x72, (byte)0xb1,
@@ -337,9 +350,14 @@ public class MirrorHomeFragment extends Fragment {
 
     // 添加原生方法声明
     public native String stringFromJNI();
+    public native byte[] playfairDecrypt(byte[] message3, byte[] cipherText);
     
     // 在类的静态初始化块中加载库
     static {
         System.loadLibrary("connect_screen");
+    }
+
+    private byte[] decodeBase64(String base64String) {
+        return android.util.Base64.decode(base64String, android.util.Base64.DEFAULT);
     }
 }
