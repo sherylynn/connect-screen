@@ -131,6 +131,10 @@ public class MirrorHomeFragment extends Fragment {
                             String deviceName = serviceInfo.getServiceName();
                             String host = serviceInfo.getHost().getHostAddress();
                             int port = serviceInfo.getPort();
+                            Log.i(TAG, "服务解析成功");
+                            Log.i(TAG, "设备名称: " + deviceName);
+                            Log.i(TAG, "设备地址: " + host);
+                            Log.i(TAG, "设备端口: " + port);
                             
                             // 使用新的线程类
                             new RtspConnectionThread(host, port, requireContext(), MirrorHomeFragment.this).start();
@@ -170,6 +174,20 @@ public class MirrorHomeFragment extends Fragment {
         private static final byte[] FP_SETUP_REQUEST = new byte[] {
             0x46, 0x50, 0x4c, 0x59, 0x03, 0x01, 0x01, 0x00,
             0x00, 0x00, 0x00, 0x04, 0x02, 0x00, 0x01, (byte)0xbb
+        };
+
+        private static final byte[] FP_SETUP_REQUEST_2 = new byte[] {
+            0x46, 0x50, 0x4c, 0x59, 0x03, 0x01, 0x03, 0x00, 0x00, 0x00, 0x00, (byte)0x98, 0x01, (byte)0x8f, 0x1a, (byte)0x9c,
+            (byte)0xaf, 0x6c, 0x47, 0x49, (byte)0xf8, (byte)0xb2, 0x09, (byte)0xba, (byte)0xdf, (byte)0xe3, 0x67, (byte)0xf9, 0x7d, (byte)0x85, (byte)0xf7, 0x0d,
+            (byte)0xd6, (byte)0x80, 0x67, (byte)0xdd, 0x33, (byte)0xca, 0x4a, 0x57, (byte)0xe7, 0x3c, (byte)0xaf, (byte)0xa4, (byte)0xaf, 0x28, 0x72, (byte)0xb1,
+            0x04, (byte)0xf0, (byte)0xab, 0x6b, (byte)0xb0, 0x2b, 0x5b, 0x5d, 0x40, 0x5f, (byte)0xfd, (byte)0xa7, 0x05, (byte)0xae, 0x0e, 0x78,
+            (byte)0xbe, (byte)0xf7, (byte)0xeb, (byte)0x9f, 0x43, (byte)0xcd, (byte)0x90, (byte)0xe1, 0x13, 0x79, (byte)0xdb, (byte)0xfc, (byte)0xca, (byte)0xc4, 0x54, (byte)0xac,
+            (byte)0x86, 0x42, (byte)0xc9, (byte)0xdb, 0x4e, 0x2e, (byte)0xaf, 0x47, (byte)0xef, (byte)0xdf, (byte)0xcd, 0x09, (byte)0xfa, 0x3f, (byte)0xb8, 0x78,
+            (byte)0xa0, (byte)0xb8, 0x1d, (byte)0xd3, (byte)0x85, 0x09, (byte)0xf6, 0x6c, 0x46, 0x49, (byte)0x9b, (byte)0xcf, (byte)0xc6, (byte)0xd9, (byte)0xf0, (byte)0xa3,
+            0x7c, (byte)0xfd, (byte)0xf7, (byte)0xc9, (byte)0xac, 0x16, 0x5c, 0x4e, (byte)0xce, 0x3f, (byte)0xae, (byte)0xb9, (byte)0xe1, (byte)0xde, 0x06, (byte)0xb8,
+            (byte)0xd7, (byte)0xd9, 0x4d, 0x43, (byte)0xab, (byte)0x8c, (byte)0xad, (byte)0x8d, (byte)0xbb, 0x6a, (byte)0xca, (byte)0xf3, 0x47, 0x21, 0x1e, (byte)0xee,
+            (byte)0xf2, 0x4d, (byte)0xee, 0x5f, (byte)0xb2, 0x19, (byte)0xce, 0x44, 0x0d, 0x79, 0x63, (byte)0x8f, (byte)0xd8, 0x1d, (byte)0xbd, (byte)0xb4,
+            (byte)0xb9, 0x56, (byte)0xba, (byte)0xf4
         };
 
         private final String host;
@@ -233,6 +251,33 @@ public class MirrorHomeFragment extends Fragment {
                 
                 // 在主线程显示响应
                 fragment.logOnMainThread("收到FP-SETUP响应：" + response.toString());
+                
+                // 发送第二个 FP-SETUP 请求
+                String fpSetupRequest2 = 
+                    "POST /fp-setup RTSP/1.0\r\n" +
+                    "X-Apple-ET: 32\r\n" +
+                    "Content-Length: 164\r\n" +
+                    "Content-Type: application/octet-stream\r\n" +
+                    "CSeq: 2\r\n" +
+                    "DACP-ID: 2CC18E0712799F6D\r\n" +
+                    "Active-Remote: 1140620407\r\n" +
+                    "User-Agent: AirPlay/775.3.1\r\n\r\n";
+                
+                out.print(fpSetupRequest2);
+                out.flush();
+                
+                // 写入164字节的二进制数据
+                outputStream.write(FP_SETUP_REQUEST_2);
+                outputStream.flush();
+
+                // 读取第二个fp-setup响应
+                response = new StringBuilder();
+                while ((line = in.readLine()) != null && !line.isEmpty()) {
+                    response.append(line).append("\n");
+                }
+                
+                // 在主线程显示响应
+                fragment.logOnMainThread("收到第二个FP-SETUP响应：" + response.toString());
                 
                 socket.close();
             } catch (IOException e) {
