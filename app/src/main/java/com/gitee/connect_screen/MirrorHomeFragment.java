@@ -190,6 +190,15 @@ public class MirrorHomeFragment extends Fragment {
             (byte)0xb9, 0x56, (byte)0xba, (byte)0xf4
         };
 
+        private static final String INFO_REQUEST =
+            "GET /info RTSP/1.0\r\n" +
+            "X-Apple-ProtocolVersion: 1\r\n" +
+            "Content-Length: 0\r\n" +
+            "CSeq: 2\r\n" +
+            "DACP-ID: 2CC18E0712799F6D\r\n" +
+            "Active-Remote: 1140620407\r\n" +
+            "User-Agent: AirPlay/775.3.1\r\n\r\n";
+
         private final String host;
         private final int port;
         private final Context context;
@@ -210,19 +219,32 @@ public class MirrorHomeFragment extends Fragment {
                 BufferedReader in = new BufferedReader(
                     new InputStreamReader(socket.getInputStream()));
                 
-                // 发送 RTSP INFO 请求
+                // 发送 RTSP OPTIONS 请求
                 out.print(RTSP_OPTIONS_REQUEST);
                 out.flush();
                 
-                // 读取响应
+                // 读取 OPTIONS 响应
                 StringBuilder response = new StringBuilder();
                 String line;
                 while ((line = in.readLine()) != null && !line.isEmpty()) {
                     response.append(line).append("\n");
                 }
                 
-                // 在主线程显示响应
+                // 在主线程显示 OPTIONS 响应
                 fragment.logOnMainThread("收到 OPTIONS 响应：" + response.toString());
+
+                // 发送 GET /info 请求
+                out.print(INFO_REQUEST);
+                out.flush();
+
+                // 读取 info 响应
+                response = new StringBuilder();
+                while ((line = in.readLine()) != null && !line.isEmpty()) {
+                    response.append(line).append("\n");
+                }
+                
+                // 在主线程显示 info 响应
+                fragment.logOnMainThread("收到 INFO 响应：" + response.toString());
 
                 // 发送 FP-SETUP 请求
                 String fpSetupRequest = 
