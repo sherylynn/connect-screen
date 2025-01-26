@@ -367,6 +367,21 @@ public class MirrorHomeFragment extends Fragment {
                 response = readResponse(in);
                 fragment.logOnMainThread("收到 SETUP 响应：" + response);
                 
+                // 发送 RECORD 请求
+                String recordRequest = 
+                    "RECORD rtsp://" + host + "/709908614630099013 RTSP/1.0\r\n" +
+                    "CSeq: 6\r\n" +
+                    "DACP-ID: 2CC18E0712799F6D\r\n" +
+                    "Active-Remote: 1140620407\r\n" +
+                    "User-Agent: AirPlay/775.3.1\r\n\r\n";
+                
+                out.write(recordRequest.getBytes());
+                out.flush();
+                
+                // 读取 RECORD 响应
+                response = readResponse(in);
+                fragment.logOnMainThread("收到 RECORD 响应：" + response);
+                
                 socket.close();
             } catch (Exception e) {
                 fragment.logOnMainThread("连接失败：" + e.getMessage());
