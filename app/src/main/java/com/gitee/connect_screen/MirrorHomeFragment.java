@@ -37,6 +37,7 @@ import java.io.ByteArrayOutputStream;
 
 public class MirrorHomeFragment extends Fragment {
     private static final String TAG = "MirrorHomeFragment";
+    private static final int NTP_PORT = 55606;
     private NsdManager nsdManager;
     private NsdManager.DiscoveryListener discoveryListener;
     private static final String SERVICE_TYPE = "_airplay._tcp.";
@@ -45,6 +46,8 @@ public class MirrorHomeFragment extends Fragment {
         "OPTIONS * RTSP/1.0\r\n" +
         "CSeq: 1\r\n" +
         "User-Agent: AirPlay/1.0\r\n\r\n";
+    
+    private NtpServer ntpServer;
     
     @Nullable
     @Override
@@ -154,7 +157,11 @@ public class MirrorHomeFragment extends Fragment {
                             Log.i(TAG, "设备地址: " + host);
                             Log.i(TAG, "设备端口: " + port);
                             
-                            // 使用新的线程类
+                            // 先启动 NTP 服务器
+                            ntpServer = new NtpServer(NTP_PORT);
+                            ntpServer.start();
+                            
+                            // 然后启动 RTSP 连接线程
                             new RtspConnectionThread(host, port, requireContext(), MirrorHomeFragment.this).start();
                         }
                     });
@@ -173,6 +180,10 @@ public class MirrorHomeFragment extends Fragment {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        // 停止 NTP 服务器
+        if (ntpServer != null) {
+            ntpServer.stop();
+        }
         if (nsdManager != null && discoveryListener != null) {
             try {
                 nsdManager.stopServiceDiscovery(discoveryListener);
