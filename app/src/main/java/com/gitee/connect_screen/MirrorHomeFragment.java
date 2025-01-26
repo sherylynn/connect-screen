@@ -33,6 +33,7 @@ import java.net.Socket;
 import android.util.Log;
 import java.io.OutputStream;
 import java.io.InputStream;
+import java.io.ByteArrayOutputStream;
 
 public class MirrorHomeFragment extends Fragment {
     private static final String TAG = "MirrorHomeFragment";
@@ -322,6 +323,50 @@ public class MirrorHomeFragment extends Fragment {
                 response = readResponse(in);
                 fragment.logOnMainThread("收到第二个FP-SETUP响应：" + response);
                 
+                // 构建 SETUP 请求的 plist
+                NSDictionary setupDict = new NSDictionary();
+                setupDict.put("et", 32);
+                setupDict.put("statsCollectionEnabled", false);
+                setupDict.put("eiv", decodeBase64("SR3Us18zUP+dM7tX2CapMQ=="));
+                setupDict.put("sessionUUID", "09DA1A1F-AE04-4845-B404-7FBAF046D7D5");
+                setupDict.put("timingProtocol", "NTP");
+                setupDict.put("osName", "iPhone OS");
+                setupDict.put("osBuildVersion", "21G93");
+                setupDict.put("sourceVersion", "775.3.1");
+                setupDict.put("timingPort", 55606);
+                setupDict.put("isScreenMirroringSession", true);
+                setupDict.put("osVersion", "17.6.1");
+                setupDict.put("ekey", decodeBase64("RlBMWQECAQAAAAA8AAAAAJkBYx+MhWFfX7SWE1/KGIQAAAAQRk8i+JxY/UiO0KQ6YaNn9LfVDlQB04zcOPjatJZbPOMVUtTs"));
+                setupDict.put("sessionCorrelationUUID", "22E39508-74C6-4BCE-8685-AB01DB111C21");
+                setupDict.put("deviceID", "08:FF:44:5D:A5:1E");
+                setupDict.put("model", "iPad14,2");
+                setupDict.put("name", "舒舒平板");
+                setupDict.put("macAddress", "26:59:51:2E:80:25");
+                
+                // 将 plist 转换为二进制数据
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                PropertyListParser.saveAsBinary(setupDict, baos);
+                plistData = baos.toByteArray();
+                
+                // 构建 SETUP 请求
+                String setupRequest = 
+                    "SETUP rtsp://" + host + "/709908614630099013 RTSP/1.0\r\n" +
+                    "Content-Length: " + plistData.length + "\r\n" +
+                    "Content-Type: application/x-apple-binary-plist\r\n" +
+                    "CSeq: 3\r\n" +
+                    "DACP-ID: 2CC18E0712799F6D\r\n" +
+                    "Active-Remote: 1140620407\r\n" +
+                    "User-Agent: AirPlay/775.3.1\r\n\r\n";
+                
+                // 发送请求头和 plist 数据
+                out.write(setupRequest.getBytes());
+                out.write(plistData);
+                out.flush();
+                
+                // 读取 SETUP 响应
+                response = readResponse(in);
+                fragment.logOnMainThread("收到 SETUP 响应：" + response);
+                
                 socket.close();
             } catch (Exception e) {
                 fragment.logOnMainThread("连接失败：" + e.getMessage());
@@ -345,6 +390,11 @@ public class MirrorHomeFragment extends Fragment {
                 }
             }
             return response.toString();
+        }
+
+        // 添加 Base64 解码辅助方法
+        private byte[] decodeBase64(String base64String) {
+            return android.util.Base64.decode(base64String, android.util.Base64.DEFAULT);
         }
     }
 
