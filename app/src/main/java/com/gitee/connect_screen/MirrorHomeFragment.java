@@ -69,20 +69,20 @@ public class MirrorHomeFragment extends Fragment {
         });
 
         nsdSearchBtn.setOnClickListener(v -> {
-            OmgHaxConst.loadConstByAssetManager(requireContext().getAssets());
-            byte[] eiv = decodeBase64("SR3Us18zUP+dM7tX2CapMQ==");
-            byte[] ekey = decodeBase64("RlBMWQECAQAAAAA8AAAAAJkBYx+MhWFfX7SWE1/KGIQAAAAQRk8i+JxY/UiO0KQ6YaNn9LfVDlQB04zcOPjatJZbPOMVUtTs");
-            byte[] aesKey = playfairDecrypt(RtspConnectionThread.FP_SETUP_REQUEST_2, ekey);
+            // OmgHaxConst.loadConstByAssetManager(requireContext().getAssets());
+            // byte[] eiv = decodeBase64("SR3Us18zUP+dM7tX2CapMQ==");
+            // byte[] ekey = decodeBase64("RlBMWQECAQAAAAA8AAAAAJkBYx+MhWFfX7SWE1/KGIQAAAAQRk8i+JxY/UiO0KQ6YaNn9LfVDlQB04zcOPjatJZbPOMVUtTs");
+            // byte[] aesKey = playfairDecrypt(RtspConnectionThread.FP_SETUP_REQUEST_2, ekey);
 
-            StringBuilder hexDump = new StringBuilder();
-            for (byte b : aesKey) {
-                hexDump.append(String.format("%02x ", b));
-            }
-            System.out.println("解密后的密钥: " + hexDump.toString());
-            System.out.println("Base64编码的密钥: " + android.util.Base64.encodeToString(aesKey, android.util.Base64.DEFAULT));
-            // if (checkAndRequestPermissions()) {
-            //     startNsdDiscovery();
+            // StringBuilder hexDump = new StringBuilder();
+            // for (byte b : aesKey) {
+            //     hexDump.append(String.format("%02x ", b));
             // }
+            // System.out.println("解密后的密钥: " + hexDump.toString());
+            // System.out.println("Base64编码的密钥: " + android.util.Base64.encodeToString(aesKey, android.util.Base64.DEFAULT));
+            if (checkAndRequestPermissions()) {
+                startNsdDiscovery();
+            }
         });
 
         return view;
