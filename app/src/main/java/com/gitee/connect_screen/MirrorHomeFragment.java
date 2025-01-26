@@ -440,6 +440,33 @@ public class MirrorHomeFragment extends Fragment {
                 // 读取第二个 SETUP 响应
                 response = readResponse(in);
                 fragment.logOnMainThread("收到第二个 SETUP 响应：" + response);
+
+                // 解析第二个 SETUP 响应中的二进制 plist 数据
+                contentLength = 0;
+                String contentLengthHeader = "Content-Length: ";
+                int clIndex = response.indexOf(contentLengthHeader);
+                if (clIndex != -1) {
+                    int endIndex = response.indexOf("\r\n", clIndex);
+                    contentLength = Integer.parseInt(response.substring(clIndex + contentLengthHeader.length(), endIndex).trim());
+                }
+
+                // 读取二进制 plist 数据
+                byte[] plistResponseData = new byte[contentLength];
+                int totalBytesRead = 0;
+                while (totalBytesRead < contentLength) {
+                    bytesRead = in.read(plistResponseData, totalBytesRead, contentLength - totalBytesRead);
+                    if (bytesRead == -1) break;
+                    totalBytesRead += bytesRead;
+                }
+
+                // 解析二进制 plist
+                NSDictionary responseDict = (NSDictionary)PropertyListParser.parse(plistResponseData);
+                NSArray responseStreams = (NSArray)responseDict.get("streams");
+                NSDictionary streamInfo = (NSDictionary)responseStreams.objectAtIndex(0);
+                
+                // 获取数据端口
+                int dataPort = streamInfo.get("dataPort").toJavaObject(Integer.class);
+                fragment.logOnMainThread("获取到数据端口: " + dataPort);
                 
                 socket.close();
             } catch (Exception e) {
