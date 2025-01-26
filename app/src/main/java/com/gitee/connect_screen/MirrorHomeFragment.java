@@ -34,7 +34,7 @@ public class MirrorHomeFragment extends Fragment {
     private NsdManager.DiscoveryListener discoveryListener;
     private static final String SERVICE_TYPE = "_airplay._tcp.";
     private static final int PERMISSION_REQUEST_CODE = 123;
-    private static final String RTSP_INFO_REQUEST = 
+    private static final String RTSP_OPTIONS_REQUEST =
         "OPTIONS * RTSP/1.0\r\n" +
         "CSeq: 1\r\n" +
         "User-Agent: AirPlay/1.0\r\n\r\n";
@@ -211,7 +211,7 @@ public class MirrorHomeFragment extends Fragment {
                     new InputStreamReader(socket.getInputStream()));
                 
                 // 发送 RTSP INFO 请求
-                out.print(RTSP_INFO_REQUEST);
+                out.print(RTSP_OPTIONS_REQUEST);
                 out.flush();
                 
                 // 读取响应
@@ -222,7 +222,7 @@ public class MirrorHomeFragment extends Fragment {
                 }
                 
                 // 在主线程显示响应
-                fragment.logOnMainThread("收到INFO响应：" + response.toString());
+                fragment.logOnMainThread("收到 OPTIONS 响应：" + response.toString());
 
                 // 发送 FP-SETUP 请求
                 String fpSetupRequest = 
