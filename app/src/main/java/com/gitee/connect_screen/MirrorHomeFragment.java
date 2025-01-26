@@ -18,6 +18,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.dd.plist.NSArray;
 import com.gitee.connect_screen.airplay.OmgHax;
 import com.gitee.connect_screen.airplay.OmgHaxConst;
 import com.gitee.connect_screen.job.ExitAll;
@@ -392,6 +393,53 @@ public class MirrorHomeFragment extends Fragment {
                 // 读取 RECORD 响应
                 response = readResponse(in);
                 fragment.logOnMainThread("收到 RECORD 响应：" + response);
+                
+                // 构建第二个 SETUP 请求的 plist
+                NSDictionary setupDict2 = new NSDictionary();
+                NSDictionary streamDict = new NSDictionary();
+                NSArray streams = new NSArray(1);
+                NSArray timestampInfo = new NSArray(5);
+                
+                // 构建 timestampInfo 数组
+                int index = 0;
+                for (String name : new String[]{"SubSu", "BePxT", "AfPxT", "BefEn", "EmEnc"}) {
+                    NSDictionary timeDict = new NSDictionary();
+                    timeDict.put("name", name);
+                    timestampInfo.setValue(index, timeDict);
+                    index++;
+                }
+                
+                streamDict.put("timestampInfo", timestampInfo);
+                streamDict.put("latencyMs", 100);
+                streamDict.put("type", 110);
+                streamDict.put("streamConnectionID", 7360034197512602439L);
+                
+                streams.setValue(0, streamDict);  // 将 streamDict 设置为数组的第一个元素
+                setupDict2.put("streams", streams);
+                
+                // 将 plist 转换为二进制数据
+                ByteArrayOutputStream baos2 = new ByteArrayOutputStream();
+                PropertyListParser.saveAsBinary(setupDict2, baos2);
+                byte[] plistData2 = baos2.toByteArray();
+                
+                // 构建第二个 SETUP 请求
+                String setupRequest2 = 
+                    "SETUP rtsp://" + host + "/709908614630099013 RTSP/1.0\r\n" +
+                    "Content-Length: " + plistData2.length + "\r\n" +
+                    "Content-Type: application/x-apple-binary-plist\r\n" +
+                    "CSeq: 7\r\n" +
+                    "DACP-ID: 2CC18E0712799F6D\r\n" +
+                    "Active-Remote: 1140620407\r\n" +
+                    "User-Agent: AirPlay/775.3.1\r\n\r\n";
+                
+                // 发送第二个 SETUP 请求
+                out.write(setupRequest2.getBytes());
+                out.write(plistData2);
+                out.flush();
+                
+                // 读取第二个 SETUP 响应
+                response = readResponse(in);
+                fragment.logOnMainThread("收到第二个 SETUP 响应：" + response);
                 
                 socket.close();
             } catch (Exception e) {
