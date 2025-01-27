@@ -1,6 +1,8 @@
 package com.gitee.connect_screen;
 
 import android.content.Context;
+import android.media.projection.MediaProjection;
+import android.media.projection.MediaProjectionConfig;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -35,6 +37,19 @@ import android.util.Log;
 import java.io.OutputStream;
 import java.io.InputStream;
 import java.io.ByteArrayOutputStream;
+import android.content.Intent;
+import android.media.projection.MediaProjectionManager;
+import android.widget.Toast;
+import android.media.MediaCodec;
+import android.media.MediaFormat;
+import android.media.MediaCodecInfo;
+import android.hardware.display.VirtualDisplay;
+import android.hardware.display.DisplayManager;
+import android.view.Surface;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.nio.ByteBuffer;
+import android.os.Environment;
 
 public class MirrorHomeFragment extends Fragment {
     private static final String TAG = "MirrorHomeFragment";
@@ -58,6 +73,7 @@ public class MirrorHomeFragment extends Fragment {
         Button settingsBtn = view.findViewById(R.id.settingsBtn);
         Button exitBtn = view.findViewById(R.id.exitBtn);
         Button nsdSearchBtn = view.findViewById(R.id.nsdSearchBtn);
+        Button projectBtn = view.findViewById(R.id.projectBtn);
         TextView mirrorStatus = view.findViewById(R.id.mirrorStatus);
         if (MirrorActivity.getInstance() != null) {
             mirrorStatus.setText("镜像投屏中");
@@ -74,19 +90,30 @@ public class MirrorHomeFragment extends Fragment {
         });
 
         nsdSearchBtn.setOnClickListener(v -> {
-            // OmgHaxConst.loadConstByAssetManager(requireContext().getAssets());
-            // byte[] eiv = decodeBase64("SR3Us18zUP+dM7tX2CapMQ==");
-            // byte[] ekey = decodeBase64("RlBMWQECAQAAAAA8AAAAAJkBYx+MhWFfX7SWE1/KGIQAAAAQRk8i+JxY/UiO0KQ6YaNn9LfVDlQB04zcOPjatJZbPOMVUtTs");
-            // byte[] aesKey = playfairDecrypt(RtspConnectionThread.FP_SETUP_REQUEST_2, ekey);
+            MediaProjection mediaProjection = State.getMediaProjection();
+            logOnMainThread("media projection: " + mediaProjection);
+            if (mediaProjection != null) {
+                startScreenRecording(mediaProjection);
+            }
+//            if (checkAndRequestPermissions()) {
+//                startNsdDiscovery();
+//            }
+        });
 
-            // StringBuilder hexDump = new StringBuilder();
-            // for (byte b : aesKey) {
-            //     hexDump.append(String.format("%02x ", b));
-            // }
-            // System.out.println("解密后的密钥: " + hexDump.toString());
-            // System.out.println("Base64编码的密钥: " + android.util.Base64.encodeToString(aesKey, android.util.Base64.DEFAULT));
-            if (checkAndRequestPermissions()) {
-                startNsdDiscovery();
+        projectBtn.setOnClickListener(v -> {
+            MediaProjectionManager mediaProjectionManager = 
+                (MediaProjectionManager) requireContext().getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+            if (mediaProjectionManager != null) {
+                Intent captureIntent;
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    captureIntent = mediaProjectionManager.createScreenCaptureIntent(
+                        MediaProjectionConfig.createConfigForDefaultDisplay());
+                } else {
+                    captureIntent = mediaProjectionManager.createScreenCaptureIntent();
+                }
+                requireActivity().startActivityForResult(captureIntent, MainActivity.REQUEST_CODE_MEDIA_PROJECTION);
+            } else {
+                Toast.makeText(requireContext(), "无法获取 MediaProjectionManager 服务", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -519,5 +546,75 @@ public class MirrorHomeFragment extends Fragment {
 
     private byte[] decodeBase64(String base64String) {
         return android.util.Base64.decode(base64String, android.util.Base64.DEFAULT);
+    }
+
+    private void startScreenRecording(MediaProjection mediaProjection) {
+        int width = 1920;
+        int height = 1080;
+        int dpi = getResources().getDisplayMetrics().densityDpi;
+        
+        try {
+            // 配置 MediaCodec 编码器
+            MediaFormat format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height);
+            format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
+            format.setInteger(MediaFormat.KEY_BIT_RATE, 6000000); // 6Mbps
+            format.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
+            format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1); // 关键帧间隔1秒
+            
+            MediaCodec encoder = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);
+            encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+            
+            // 创建编码器的输入Surface
+            Surface inputSurface = encoder.createInputSurface();
+            encoder.start();
+            
+            // 创建VirtualDisplay
+            VirtualDisplay virtualDisplay = mediaProjection.createVirtualDisplay(
+                "ScreenRecording",
+                width, height, dpi,
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC,
+                inputSurface, null, null);
+                
+            // 开始编码线程
+            new Thread(() -> {
+                try {
+                    // 修改：使用 Download 目录
+                    String downloadPath = Environment.getExternalStoragePublicDirectory(
+                        Environment.DIRECTORY_DOWNLOADS).getAbsolutePath();
+                    String filePath = new File(downloadPath, "screen_record.mp4").getAbsolutePath();
+                    FileOutputStream outputStream = new FileOutputStream(filePath);
+                    
+                    MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+                    boolean isEncoding = true;
+                    
+                    while (isEncoding) {
+                        int outputBufferId = encoder.dequeueOutputBuffer(bufferInfo, 10000);
+                        if (outputBufferId >= 0) {
+                            ByteBuffer outputBuffer = encoder.getOutputBuffer(outputBufferId);
+                            if (outputBuffer != null) {
+                                byte[] data = new byte[bufferInfo.size];
+                                outputBuffer.get(data);
+                                outputStream.write(data);
+                            }
+                            encoder.releaseOutputBuffer(outputBufferId, false);
+                        }
+                    }
+                    
+                    // 清理资源
+                    outputStream.close();
+                    encoder.stop();
+                    encoder.release();
+                    virtualDisplay.release();
+                    
+                } catch (IOException e) {
+                    logOnMainThread("录制失败: " + e.getMessage());
+                }
+            }).start();
+            
+            logOnMainThread("开始录制屏幕");
+            
+        } catch (IOException e) {
+            logOnMainThread("初始化编码器失败: " + e.getMessage());
+        }
     }
 }

@@ -26,6 +26,13 @@
             android:padding="8dp"
             android:text="NSD搜索" />
 
+        <Button
+            android:id="@+id/projectBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="8dp"
+            android:text="投屏" />
+
         <Space
             android:layout_width="0dp"
             android:layout_height="wrap_content"
