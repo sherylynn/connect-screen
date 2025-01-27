@@ -75,6 +75,8 @@ import android.media.projection.MediaProjection;
 import android.util.Log;
 import android.view.Surface;
 
+import com.gitee.connect_screen.airplay.FairPlayVideoEncryptor;
+
 import java.net.Socket;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -91,11 +93,18 @@ public class RtpSenderThread extends Thread {
     private VirtualDisplay virtualDisplay;
     private long firstPacketTimestamp = 0;
     private int packetCount = 0;
+    private FairPlayVideoEncryptor encryptor;
 
     public RtpSenderThread(String host, int port, MediaProjection mediaProjection) {
         this.host = host;
         this.port = port;
         this.mediaProjection = mediaProjection;
+        try {
+            // 初始化加密器，streamConnectionID可以是固定值或随机生成
+            this.encryptor = new FairPlayVideoEncryptor(null, "7360034197512602439");
+        } catch (Exception e) {
+            Log.e(TAG, "初始化加密器失败: " + e.getMessage());
+        }
     }
 
     @Override
@@ -364,6 +373,14 @@ public class RtpSenderThread extends Thread {
 
         byte[] data = new byte[bufferInfo.size];
         buffer.get(data);
+
+        try {
+            // 在发送之前加密视频数据
+            encryptor.encrypt(data);
+        } catch (Exception e) {
+            Log.e(TAG, "加密视频数据失败: " + e.getMessage());
+            return;
+        }
 
         // 创建数据包头部（128字节）
         byte[] packet = new byte[128 + bufferInfo.size];

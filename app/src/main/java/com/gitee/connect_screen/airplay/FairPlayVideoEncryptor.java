@@ -9,7 +9,6 @@ import java.util.Arrays;
 
 public class FairPlayVideoEncryptor {
     private final byte[] aesKey;
-    private final byte[] sharedSecret;
     private final String streamConnectionID;
 
     private final Cipher aesCtrEncrypt;
@@ -17,9 +16,13 @@ public class FairPlayVideoEncryptor {
 
     private int nextEncryptCount;
 
-    public FairPlayVideoEncryptor(byte[] aesKey, byte[] sharedSecret, String streamConnectionID) throws Exception {
-        this.aesKey = aesKey;
-        this.sharedSecret = sharedSecret;
+    public FairPlayVideoEncryptor(byte[] aesKey, String streamConnectionID) throws Exception {
+        this.aesKey = new byte[] {
+            0x46, (byte)0xa9, (byte)0xa7, 0x4a, 
+            0x0d, (byte)0xbf, 0x2b, 0x58, 
+            (byte)0xa1, (byte)0x92, 0x1c, 0x26, 
+            (byte)0xf7, 0x66, 0x77, 0x2d
+        };
         this.streamConnectionID = streamConnectionID;
 
         aesCtrEncrypt = Cipher.getInstance("AES/CTR/NoPadding");
@@ -53,7 +56,6 @@ public class FairPlayVideoEncryptor {
     private void initAesCtrCipher() throws Exception {
         MessageDigest sha512Digest = MessageDigest.getInstance("SHA-512");
         sha512Digest.update(aesKey);
-        sha512Digest.update(sharedSecret);
         byte[] eaesKey = sha512Digest.digest();
 
         byte[] skey = ("AirPlayStreamKey" + streamConnectionID).getBytes(StandardCharsets.UTF_8);
