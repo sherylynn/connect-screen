@@ -101,7 +101,7 @@ public class RtpSenderThread extends Thread {
         this.mediaProjection = mediaProjection;
         try {
             // 初始化加密器，streamConnectionID可以是固定值或随机生成
-            this.encryptor = new FairPlayVideoEncryptor(null, "7360034197512602439");
+            this.encryptor = new FairPlayVideoEncryptor();
         } catch (Exception e) {
             Log.e(TAG, "初始化加密器失败: " + e.getMessage());
         }
@@ -437,6 +437,10 @@ public class RtpSenderThread extends Thread {
         currentOffset = 0;
         int packetOffset = 128;
         
+        // 创建一个单独的payload数组用于加密
+        byte[] payload = new byte[totalSize];
+        int payloadOffset = 0;
+        
         while (currentOffset < rawData.length) {
             if (currentOffset + 4 <= rawData.length &&
                 rawData[currentOffset] == 0 && 
@@ -451,28 +455,39 @@ public class RtpSenderThread extends Thread {
                 
                 int nalLength = nextNalOffset - (currentOffset + 4);
                 
-                // 写入NAL单元长度（大端序）
-                packet[packetOffset++] = (byte)((nalLength >> 24) & 0xFF);
-                packet[packetOffset++] = (byte)((nalLength >> 16) & 0xFF);
-                packet[packetOffset++] = (byte)((nalLength >> 8) & 0xFF);
-                packet[packetOffset++] = (byte)(nalLength & 0xFF);
+                // 写入NAL单元长度到payload（大端序）
+                payload[payloadOffset++] = (byte)((nalLength >> 24) & 0xFF);
+                payload[payloadOffset++] = (byte)((nalLength >> 16) & 0xFF);
+                payload[payloadOffset++] = (byte)((nalLength >> 8) & 0xFF);
+                payload[payloadOffset++] = (byte)(nalLength & 0xFF);
                 
-                // 复制NAL单元数据
-                System.arraycopy(rawData, currentOffset + 4, packet, packetOffset, nalLength);
-                packetOffset += nalLength;
+                // 复制NAL单元数据到payload
+                System.arraycopy(rawData, currentOffset + 4, payload, payloadOffset, nalLength);
+                payloadOffset += nalLength;
                 currentOffset = nextNalOffset;
             } else {
                 currentOffset++;
             }
         }
 
-        // 发送数据包
-        outputStream.write(packet);
-        outputStream.flush();
+        try {
+            // 加密整个payload
+            encryptor.encrypt(payload);
 
-        packetCount++; // 增加包计数
-        Log.d(TAG, String.format("发送视频包: 总大小=%d字节, NAL单元数=%d, 是否为关键帧=%b, 包序号=%d", 
-            packet.length, nalCount, isKeyFrame, packetCount));
+            // 将加密后的payload复制到packet中
+            System.arraycopy(payload, 0, packet, 128, payload.length);
+            
+            // 发送数据包
+            outputStream.write(packet);
+            outputStream.flush();
+
+            packetCount++;
+            Log.d(TAG, String.format("发送加密视频包: 总大小=%d字节, NAL单元数=%d, 是否为关键帧=%b, 包序号=%d", 
+                packet.length, nalCount, isKeyFrame, packetCount));
+        } catch (Exception e) {
+            Log.e(TAG, "加密视频数据失败: " + e.getMessage());
+            throw new IOException("加密失败", e);
+        }
     }
 
     // 查找下一个NAL单元的起始位置

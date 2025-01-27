@@ -16,7 +16,11 @@ public class FairPlayVideoEncryptor {
 
     private int nextEncryptCount;
 
-    public FairPlayVideoEncryptor(byte[] aesKey, String streamConnectionID) throws Exception {
+    private byte[] encryptAesKey;
+    private byte[] encryptAesIV;
+
+    public FairPlayVideoEncryptor() throws Exception {
+        String streamConnectionID = "7360034197512602439";
         this.aesKey = new byte[] {
             0x46, (byte)0xa9, (byte)0xa7, 0x4a, 
             0x0d, (byte)0xbf, 0x2b, 0x58, 
@@ -33,11 +37,12 @@ public class FairPlayVideoEncryptor {
     public void encrypt(byte[] video) throws Exception {
         if (nextEncryptCount > 0) {
             for (int i = 0; i < nextEncryptCount; i++) {
-                video[i] = (byte) (video[i] ^ og[(16 - nextEncryptCount) + i]);
+                video[i] ^= og[(16 - nextEncryptCount) + i];
             }
         }
 
         int encryptlen = ((video.length - nextEncryptCount) / 16) * 16;
+        aesCtrEncrypt.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(encryptAesKey, "AES"), new IvParameterSpec(encryptAesIV));
         aesCtrEncrypt.update(video, nextEncryptCount, encryptlen, video, nextEncryptCount);
         System.arraycopy(video, nextEncryptCount, video, nextEncryptCount, encryptlen);
 
@@ -55,23 +60,35 @@ public class FairPlayVideoEncryptor {
 
     private void initAesCtrCipher() throws Exception {
         MessageDigest sha512Digest = MessageDigest.getInstance("SHA-512");
-        sha512Digest.update(aesKey);
-        byte[] eaesKey = sha512Digest.digest();
-
+        
         byte[] skey = ("AirPlayStreamKey" + streamConnectionID).getBytes(StandardCharsets.UTF_8);
         sha512Digest.update(skey);
-        sha512Digest.update(eaesKey, 0, 16);
+        sha512Digest.update(aesKey);
         byte[] hash1 = sha512Digest.digest();
 
         byte[] siv = ("AirPlayStreamIV" + streamConnectionID).getBytes(StandardCharsets.UTF_8);
         sha512Digest.update(siv);
-        sha512Digest.update(eaesKey, 0, 16);
+        sha512Digest.update(aesKey);
         byte[] hash2 = sha512Digest.digest();
 
-        byte[] encryptAesKey = new byte[16];
-        byte[] encryptAesIV = new byte[16];
+        encryptAesKey = new byte[16];
+        encryptAesIV = new byte[16];
         System.arraycopy(hash1, 0, encryptAesKey, 0, 16);
         System.arraycopy(hash2, 0, encryptAesIV, 0, 16);
+
+        StringBuilder keyLog = new StringBuilder("Video AES Key: \n");
+        StringBuilder ivLog = new StringBuilder("Video AES IV: \n");
+        
+        for (byte b : encryptAesKey) {
+            keyLog.append(String.format("%02x\n", b & 0xFF));
+        }
+        
+        for (byte b : encryptAesIV) {
+            ivLog.append(String.format("%02x\n", b & 0xFF));
+        }
+        
+        System.out.println(keyLog.toString());
+        System.out.println(ivLog.toString());
 
         aesCtrEncrypt.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(encryptAesKey, "AES"), new IvParameterSpec(encryptAesIV));
     }
