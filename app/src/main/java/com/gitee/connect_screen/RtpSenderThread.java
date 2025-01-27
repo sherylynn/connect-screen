@@ -1,4 +1,6 @@
-package com.gitee.connect_screen;/*
+package com.gitee.connect_screen;
+
+/*
 AirPlay Mirror Protocol Packet Structure
 ======================================
 
@@ -64,6 +66,121 @@ For streaming report packets (0x05):
 - May include 25KB trailer with currently unidentified content
  */
 
-public class RtpSenderThread {
+import android.util.Log;
+import java.net.Socket;
+import java.io.IOException;
+
+public class RtpSenderThread extends Thread {
+    private static final String TAG = "RtpSenderThread";
+    private final String host;
+    private final int port;
+    private Socket socket;
+    private boolean running = true;
+
+    public RtpSenderThread(String host, int port) {
+        this.host = host;
+        this.port = port;
+    }
+
+    @Override
+    public void run() {
+        try {
+            socket = new Socket(host, port);
+            Log.i(TAG, "已连接到数据端口: " + port);
+
+            // 首先发送 SPS 和 PPS
+            // 这里需要从编码器获取实际的 SPS 和 PPS 数据
+            byte[] sps = new byte[] { /* 实际的 SPS 数据 */ };
+            byte[] pps = new byte[] { /* 实际的 PPS 数据 */ };
+            sendSPSPPSPacket(sps, pps);
+
+            while (running) {
+                // TODO: 从编码器获取 H.264 帧数据并发送
+                Thread.sleep(500);
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "RTP发送线程错误: " + e.getMessage());
+        } finally {
+            try {
+                if (socket != null) {
+                    socket.close();
+                }
+            } catch (IOException e) {
+                Log.e(TAG, "关闭socket错误: " + e.getMessage());
+            }
+        }
+    }
+
+    public void stopSending() {
+        running = false;
+        try {
+            if (socket != null) {
+                socket.close();
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "停止发送时错误: " + e.getMessage());
+        }
+    }
+
+    private void sendSPSPPSPacket(byte[] sps, byte[] pps) {
+        // 计算总负载大小：header(6) + sps_size(2) + sps_data + pps_size(2) + pps_data
+        int payloadSize = 6 + 2 + sps.length + 2 + pps.length;
+        
+        // 创建128字节的数据包头
+        byte[] header = new byte[128];
+        
+        // 设置负载大小 (前4字节)
+        header[0] = (byte)((payloadSize >> 24) & 0xFF);
+        header[1] = (byte)((payloadSize >> 16) & 0xFF);
+        header[2] = (byte)((payloadSize >> 8) & 0xFF);
+        header[3] = (byte)(payloadSize & 0xFF);
+        
+        // 设置包类型 (0x01 0x00) 和选项 (0x16 0x01)
+        header[4] = 0x01;
+        header[5] = 0x00;
+        header[6] = 0x16;
+        header[7] = 0x01;
+        
+        // 设置视频尺寸信息 (示例使用1646x1080)
+        setFloatValue(header, 16, 1646.0f);  // source width
+        setFloatValue(header, 20, 1080.0f);  // source height
+        setFloatValue(header, 40, 1646.0f);  // source width repeated
+        setFloatValue(header, 44, 1080.0f);  // source height repeated
+        setFloatValue(header, 56, 1646.0f);  // display width
+        setFloatValue(header, 60, 1080.0f);  // display height
+        
+        // 创建负载数据
+        byte[] payload = new byte[payloadSize];
+        int offset = 0;
+        
+        // 添加SPS+PPS header (01 64 00 28 ff e1)
+        payload[offset++] = 0x01;
+        payload[offset++] = 0x64;
+        payload[offset++] = 0x00;
+        payload[offset++] = 0x28;
+        payload[offset++] = (byte)0xff;
+        payload[offset++] = (byte)0xe1;
+        
+        // 添加SPS大小和数据
+        payload[offset++] = (byte)((sps.length >> 8) & 0xFF);
+        payload[offset++] = (byte)(sps.length & 0xFF);
+        System.arraycopy(sps, 0, payload, offset, sps.length);
+        offset += sps.length;
+        
+        // 添加PPS大小和数据
+        payload[offset++] = (byte)((pps.length >> 8) & 0xFF);
+        payload[offset++] = (byte)(pps.length & 0xFF);
+        System.arraycopy(pps, 0, payload, offset, pps.length);
+        
+        // TODO: 通过网络发送header和payload
+    }
     
+    private void setFloatValue(byte[] buffer, int offset, float value) {
+        int intBits = Float.floatToIntBits(value);
+        buffer[offset] = (byte)((intBits >> 24) & 0xFF);
+        buffer[offset + 1] = (byte)((intBits >> 16) & 0xFF);
+        buffer[offset + 2] = (byte)((intBits >> 8) & 0xFF);
+        buffer[offset + 3] = (byte)(intBits & 0xFF);
+    }
 }

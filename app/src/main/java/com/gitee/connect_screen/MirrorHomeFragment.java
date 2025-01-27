@@ -233,6 +233,7 @@ public class MirrorHomeFragment extends Fragment {
         private final int port;
         private final Context context;
         private final MirrorHomeFragment fragment;
+        private boolean isRunning = true;
 
         public RtspConnectionThread(String host, int port, Context context, MirrorHomeFragment fragment) {
             this.host = host;
@@ -468,6 +469,14 @@ public class MirrorHomeFragment extends Fragment {
                 int dataPort = streamInfo.get("dataPort").toJavaObject(Integer.class);
                 fragment.logOnMainThread("获取到数据端口: " + dataPort);
                 
+                // 创建并启动 RTP 发送线程
+                RtpSenderThread rtpSender = new RtpSenderThread(host, dataPort);
+                rtpSender.start();
+
+                while (isRunning) {
+                    // TODO: 从编码器获取 H.264 帧数据并发送
+                    Thread.sleep(500);
+                }
                 socket.close();
             } catch (Exception e) {
                 fragment.logOnMainThread("连接失败：" + e.getMessage());
