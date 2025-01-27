@@ -1,7 +1,6 @@
 package com.gitee.connect_screen;
 
 import android.content.Context;
-import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionConfig;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -21,17 +20,12 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.dd.plist.NSArray;
-import com.gitee.connect_screen.airplay.OmgHax;
-import com.gitee.connect_screen.airplay.OmgHaxConst;
 import com.gitee.connect_screen.job.ExitAll;
 import com.dd.plist.PropertyListParser;
 import com.dd.plist.NSDictionary;
 import java.io.ByteArrayInputStream;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.net.Socket;
 import android.util.Log;
 import java.io.OutputStream;
@@ -40,16 +34,6 @@ import java.io.ByteArrayOutputStream;
 import android.content.Intent;
 import android.media.projection.MediaProjectionManager;
 import android.widget.Toast;
-import android.media.MediaCodec;
-import android.media.MediaFormat;
-import android.media.MediaCodecInfo;
-import android.hardware.display.VirtualDisplay;
-import android.hardware.display.DisplayManager;
-import android.view.Surface;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.nio.ByteBuffer;
-import android.os.Environment;
 
 public class MirrorHomeFragment extends Fragment {
     private static final String TAG = "MirrorHomeFragment";
@@ -90,14 +74,9 @@ public class MirrorHomeFragment extends Fragment {
         });
 
         nsdSearchBtn.setOnClickListener(v -> {
-            MediaProjection mediaProjection = State.getMediaProjection();
-            logOnMainThread("media projection: " + mediaProjection);
-            if (mediaProjection != null) {
-                startScreenRecording(mediaProjection);
+            if (checkAndRequestPermissions()) {
+                startNsdDiscovery();
             }
-//            if (checkAndRequestPermissions()) {
-//                startNsdDiscovery();
-//            }
         });
 
         projectBtn.setOnClickListener(v -> {
@@ -210,7 +189,7 @@ public class MirrorHomeFragment extends Fragment {
         super.onDestroy();
         // 停止 NTP 服务器
         if (ntpServer != null) {
-            ntpServer.stop();
+            ntpServer.interrupt();
         }
         if (nsdManager != null && discoveryListener != null) {
             try {
@@ -497,7 +476,7 @@ public class MirrorHomeFragment extends Fragment {
                 fragment.logOnMainThread("获取到数据端口: " + dataPort);
                 
                 // 创建并启动 RTP 发送线程
-                RtpSenderThread rtpSender = new RtpSenderThread(host, dataPort);
+                RtpSenderThread rtpSender = new RtpSenderThread(host, dataPort, com.gitee.connect_screen.State.getMediaProjection());
                 rtpSender.start();
 
                 while (isRunning) {
@@ -548,73 +527,4 @@ public class MirrorHomeFragment extends Fragment {
         return android.util.Base64.decode(base64String, android.util.Base64.DEFAULT);
     }
 
-    private void startScreenRecording(MediaProjection mediaProjection) {
-        int width = 1920;
-        int height = 1080;
-        int dpi = getResources().getDisplayMetrics().densityDpi;
-        
-        try {
-            // 配置 MediaCodec 编码器
-            MediaFormat format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height);
-            format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
-            format.setInteger(MediaFormat.KEY_BIT_RATE, 6000000); // 6Mbps
-            format.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
-            format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1); // 关键帧间隔1秒
-            
-            MediaCodec encoder = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);
-            encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
-            
-            // 创建编码器的输入Surface
-            Surface inputSurface = encoder.createInputSurface();
-            encoder.start();
-            
-            // 创建VirtualDisplay
-            VirtualDisplay virtualDisplay = mediaProjection.createVirtualDisplay(
-                "ScreenRecording",
-                width, height, dpi,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC,
-                inputSurface, null, null);
-                
-            // 开始编码线程
-            new Thread(() -> {
-                try {
-                    // 修改：使用 Download 目录
-                    String downloadPath = Environment.getExternalStoragePublicDirectory(
-                        Environment.DIRECTORY_DOWNLOADS).getAbsolutePath();
-                    String filePath = new File(downloadPath, "screen_record.mp4").getAbsolutePath();
-                    FileOutputStream outputStream = new FileOutputStream(filePath);
-                    
-                    MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
-                    boolean isEncoding = true;
-                    
-                    while (isEncoding) {
-                        int outputBufferId = encoder.dequeueOutputBuffer(bufferInfo, 10000);
-                        if (outputBufferId >= 0) {
-                            ByteBuffer outputBuffer = encoder.getOutputBuffer(outputBufferId);
-                            if (outputBuffer != null) {
-                                byte[] data = new byte[bufferInfo.size];
-                                outputBuffer.get(data);
-                                outputStream.write(data);
-                            }
-                            encoder.releaseOutputBuffer(outputBufferId, false);
-                        }
-                    }
-                    
-                    // 清理资源
-                    outputStream.close();
-                    encoder.stop();
-                    encoder.release();
-                    virtualDisplay.release();
-                    
-                } catch (IOException e) {
-                    logOnMainThread("录制失败: " + e.getMessage());
-                }
-            }).start();
-            
-            logOnMainThread("开始录制屏幕");
-            
-        } catch (IOException e) {
-            logOnMainThread("初始化编码器失败: " + e.getMessage());
-        }
-    }
 }
