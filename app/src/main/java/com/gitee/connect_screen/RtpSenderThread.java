@@ -84,6 +84,7 @@ public class RtpSenderThread extends Thread {
     private final String host;
     private final int port;
     private Socket socket;
+    private java.io.OutputStream outputStream;
     private boolean running = true;
     private final MediaProjection mediaProjection;
     private MediaCodec encoder;
@@ -99,6 +100,7 @@ public class RtpSenderThread extends Thread {
     public void run() {
         try {
             socket = new Socket(host, port);
+            outputStream = socket.getOutputStream();
             Log.i(TAG, "已连接到数据端口: " + port);
 
             // 初始化编码器
@@ -141,7 +143,7 @@ public class RtpSenderThread extends Thread {
             // 发送 SPS 和 PPS
             if (sps != null && pps != null) {
                 Log.d(TAG, "开始发送 SPS 和 PPS...");
-                sendSPSPPSPacket(sps, pps);
+                sendFirstPacket(sps, pps);
                 Log.i(TAG, "SPS 和 PPS 发送完成");
             }
 
@@ -152,8 +154,7 @@ public class RtpSenderThread extends Thread {
                 if (outputBufferId >= 0) {
                     ByteBuffer outputBuffer = encoder.getOutputBuffer(outputBufferId);
                     if (outputBuffer != null) {
-                        // 发送视频数据包
-                        sendVideoPacket(outputBuffer, bufferInfo);
+                        // todo
                     }
                     encoder.releaseOutputBuffer(outputBufferId, false);
                 }
@@ -189,43 +190,6 @@ public class RtpSenderThread extends Thread {
             inputSurface, null, null);
     }
 
-    private void sendVideoPacket(ByteBuffer buffer, MediaCodec.BufferInfo bufferInfo) throws IOException {
-        Log.v(TAG, String.format("发送视频包: 大小=%d, 时间戳=%d, 标志=%d", 
-            bufferInfo.size, bufferInfo.presentationTimeUs, bufferInfo.flags));
-        // 创建128字节的数据包头
-        byte[] header = new byte[128];
-        
-        // 设置负载大小
-        header[0] = (byte)((bufferInfo.size >> 24) & 0xFF);
-        header[1] = (byte)((bufferInfo.size >> 16) & 0xFF);
-        header[2] = (byte)((bufferInfo.size >> 8) & 0xFF);
-        header[3] = (byte)(bufferInfo.size & 0xFF);
-        
-        // 设置包类型 (根据是否为关键帧)
-        if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0) {
-            header[4] = 0x00;
-            header[5] = 0x10; // IDR frame
-        } else {
-            header[4] = 0x00;
-            header[5] = 0x00; // Non-IDR frame
-        }
-        
-        // 设置当前时间戳
-        long ntpTimestamp = System.currentTimeMillis() + 2208988800000L; // NTP时间戳
-        for (int i = 0; i < 8; i++) {
-            header[8 + i] = (byte)((ntpTimestamp >> ((7 - i) * 8)) & 0xFF);
-        }
-        
-        // 发送数据包头
-        socket.getOutputStream().write(header);
-        
-        // 发送视频数据
-        byte[] data = new byte[bufferInfo.size];
-        buffer.get(data);
-        socket.getOutputStream().write(data);
-        socket.getOutputStream().flush();
-    }
-
     private void cleanup() {
         Log.d(TAG, "开始清理资源...");
         if (encoder != null) {
@@ -247,68 +211,98 @@ public class RtpSenderThread extends Thread {
         Log.i(TAG, "资源清理完成");
     }
 
-    private void sendSPSPPSPacket(byte[] sps, byte[] pps) throws IOException {
-        // 计算总负载大小：6字节头部 + 2字节SPS大小 + SPS数据 + 2字节PPS大小 + PPS数据
-        int payloadSize = 6 + 2 + sps.length + 2 + pps.length;
+    private void sendFirstPacket(byte[] sps, byte[] pps) throws IOException {
+        int payloadSize = 6 + 2 + sps.length + 2 + pps.length + 4;
+        byte[] packet = new byte[128 + payloadSize];
         
-        // 创建128字节的数据包头
-        byte[] header = new byte[128];
+        // 修改为小端字节序 (little-endian)
+        packet[0] = (byte)(payloadSize & 0xFF);
+        packet[1] = (byte)((payloadSize >> 8) & 0xFF);
+        packet[2] = (byte)((payloadSize >> 16) & 0xFF);
+        packet[3] = (byte)((payloadSize >> 24) & 0xFF);
         
-        // 设置负载大小
-        header[0] = (byte)((payloadSize >> 24) & 0xFF);
-        header[1] = (byte)((payloadSize >> 16) & 0xFF);
-        header[2] = (byte)((payloadSize >> 8) & 0xFF);
-        header[3] = (byte)(payloadSize & 0xFF);
+        // 添加日志输出
+        Log.d(TAG, String.format("发送数据包 - 负载大小: %d (0x%08X), 字节: [%02X %02X %02X %02X]",
+            payloadSize, payloadSize,
+            packet[0] & 0xFF, packet[1] & 0xFF, packet[2] & 0xFF, packet[3] & 0xFF));
+
+        int offset = 4;
         
-        // 设置包类型为SPS+PPS (0x01 0x00)
-        header[4] = 0x01;
-        header[5] = 0x00;
+        // 设置包类型和选项
+        packet[offset++] = 0x01;
+        packet[offset++] = 0x00;
+        packet[offset++] = 0x16;
+        packet[offset++] = 0x01;
         
-        // 设置payload选项 (0x16 0x01)
-        header[6] = 0x16;
-        header[7] = 0x01;
-        
-        // 设置NTP时间戳
+        // 设置时间戳
         long ntpTimestamp = System.currentTimeMillis() + 2208988800000L;
         for (int i = 0; i < 8; i++) {
-            header[8 + i] = (byte)((ntpTimestamp >> ((7 - i) * 8)) & 0xFF);
+            packet[offset++] = (byte)((ntpTimestamp >> ((7 - i) * 8)) & 0xFF);
         }
         
-        // 设置分辨率信息
-        setFloatValue(header, 16, 1920); // 源宽度
-        setFloatValue(header, 20, 1080); // 源高度
-        setFloatValue(header, 40, 1920); // 重复源宽度
-        setFloatValue(header, 44, 1080); // 重复源高度
-        setFloatValue(header, 56, 1920); // 显示宽度
-        setFloatValue(header, 60, 1080); // 显示高度
+        // 设置分辨率信息 (使用IEEE 754格式)
+        int width = 1920;
+        int height = 1080;
         
-        // 发送数据包头
-        socket.getOutputStream().write(header);
+        writeFloat(packet, 16, width);  // 源宽度
+        writeFloat(packet, 20, height); // 源高度
         
-        // 发送负载数据
-        // 1. 发送6字节的头部
-        byte[] payloadHeader = new byte[]{0x00, 0x00, 0x00, 0x01, 0x67, 0x42};
-        socket.getOutputStream().write(payloadHeader);
+        // 清零保留字节
+        for (int i = 24; i < 40; i++) {
+            packet[i] = 0;
+        }
         
-        // 2. 发送SPS (先发送2字节大小，再发送数据)
-        socket.getOutputStream().write((byte)((sps.length >> 8) & 0xFF));
-        socket.getOutputStream().write((byte)(sps.length & 0xFF));
-        socket.getOutputStream().write(sps);
+        writeFloat(packet, 40, width);  // 重复源宽度
+        writeFloat(packet, 44, height); // 重复源高度
+        writeFloat(packet, 48, width);  // 其他宽度值
+        writeFloat(packet, 52, height); // 其他高度值
+        writeFloat(packet, 56, width);  // 显示宽度
+        writeFloat(packet, 60, height); // 显示高度
         
-        // 3. 发送PPS (先发送2字节大小，再发送数据)
-        socket.getOutputStream().write((byte)((pps.length >> 8) & 0xFF));
-        socket.getOutputStream().write((byte)(pps.length & 0xFF));
-        socket.getOutputStream().write(pps);
+        // 清零剩余保留字节
+        for (int i = 64; i < 128; i++) {
+            packet[i] = 0;
+        }
         
-        socket.getOutputStream().flush();
+        // 添加固定头部
+        byte[] payloadHeader = new byte[]{0x01, 0x64, 0x00, 0x28, (byte)0xff, (byte)0xe1};
+        System.arraycopy(payloadHeader, 0, packet, 128, 6);
+        offset = 134;
+        
+        // 添加SPS长度（网络字节序）
+        packet[offset++] = (byte)((sps.length >> 8) & 0xFF);
+        packet[offset++] = (byte)(sps.length & 0xFF);
+        System.arraycopy(sps, 0, packet, offset, sps.length);
+        offset += sps.length;
+        
+        // 添加PPS长度（网络字节序）
+        packet[offset++] = (byte)((pps.length >> 8) & 0xFF);
+        packet[offset++] = (byte)(pps.length & 0xFF);
+        System.arraycopy(pps, 0, packet, offset, pps.length);
+        offset += pps.length;
+        
+        // 添加结尾数据
+        packet[offset++] = 0x02;
+        packet[offset++] = 0x00;
+        packet[offset++] = 0x00;
+        packet[offset] = 0x00;
+        
+        // 发送数据包前添加日志
+        Log.d(TAG, "准备发送数据包，总大小: " + packet.length + " 字节");
+        outputStream.write(packet);
+        outputStream.flush();
+        Log.d(TAG, "数据包发送完成");
     }
 
-    private void setFloatValue(byte[] buffer, int offset, int value) {
-        // 将整数值转换为浮点数格式 (x.0000)
-        buffer[offset] = (byte)((value >> 24) & 0xFF);
-        buffer[offset + 1] = (byte)((value >> 16) & 0xFF);
-        buffer[offset + 2] = 0x00;
-        buffer[offset + 3] = 0x00;
+    // 将整数转换为IEEE 754浮点数格式
+    private void writeFloat(byte[] buffer, int offset, int value) {
+        float floatValue = (float)value;
+        int bits = Float.floatToIntBits(floatValue);
+        // 使用小端序（系统本地字节序）
+        buffer[offset] = (byte)bits;
+        buffer[offset + 1] = (byte)(bits >> 8);
+        buffer[offset + 2] = (byte)(bits >> 16);
+        buffer[offset + 3] = (byte)(bits >> 24);
     }
 
     private int parseSpsPps(byte[] data, int[] outStartIndex, int[] outNalLength) {
