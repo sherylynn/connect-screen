@@ -317,7 +317,8 @@ public class RtpSenderThread extends Thread {
         Log.d(TAG, "准备发送数据包，总大小: " + packet.length + " 字节");
         outputStream.write(packet);
         outputStream.flush();
-        Log.d(TAG, "数据包发送完成");
+        Log.d(TAG, "第一个数据包(SPS/PPS)发送完成");
+        packetCount = 1; // 记录这是第一个包
     }
 
     // 将整数转换为IEEE 754浮点数格式
@@ -371,42 +372,60 @@ public class RtpSenderThread extends Thread {
             return;
         }
 
-        byte[] data = new byte[bufferInfo.size];
-        buffer.get(data);
+        byte[] rawData = new byte[bufferInfo.size];
+        buffer.get(rawData);
 
-        try {
-            // 在发送之前加密视频数据
-            encryptor.encrypt(data);
-        } catch (Exception e) {
-            Log.e(TAG, "加密视频数据失败: " + e.getMessage());
-            return;
+        // 计算所需的总大小 - 需要为每个NAL单元添加4字节的大小前缀
+        int totalSize = 0;
+        int nalCount = 0;
+        int currentOffset = 0;
+        
+        // 首先计算总大小和NAL单元数量
+        while (currentOffset < rawData.length) {
+            // 查找NAL起始码 0x00000001
+            if (currentOffset + 4 <= rawData.length &&
+                rawData[currentOffset] == 0 && 
+                rawData[currentOffset + 1] == 0 &&
+                rawData[currentOffset + 2] == 0 && 
+                rawData[currentOffset + 3] == 1) {
+                
+                int nextNalOffset = findNextNalUnit(rawData, currentOffset + 4);
+                if (nextNalOffset == -1) {
+                    nextNalOffset = rawData.length;
+                }
+                
+                int nalLength = nextNalOffset - (currentOffset + 4);
+                totalSize += nalLength + 4; // 4字节用于存储NAL长度
+                nalCount++;
+                currentOffset = nextNalOffset;
+            } else {
+                currentOffset++;
+            }
         }
 
-        // 创建数据包头部（128字节）
-        byte[] packet = new byte[128 + bufferInfo.size];
+        // 创建最终的数据包
+        byte[] packet = new byte[128 + totalSize];
         
         // 设置负载大小（小端序）
-        packet[0] = (byte)(bufferInfo.size & 0xFF);
-        packet[1] = (byte)((bufferInfo.size >> 8) & 0xFF);
-        packet[2] = (byte)((bufferInfo.size >> 16) & 0xFF);
-        packet[3] = (byte)((bufferInfo.size >> 24) & 0xFF);
+        packet[0] = (byte)(totalSize & 0xFF);
+        packet[1] = (byte)((totalSize >> 8) & 0xFF);
+        packet[2] = (byte)((totalSize >> 16) & 0xFF);
+        packet[3] = (byte)((totalSize >> 24) & 0xFF);
 
         // 设置包类型和选项
-        // 检查是否为关键帧
         boolean isKeyFrame = (bufferInfo.flags & MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0;
         packet[4] = 0x00;
-        packet[5] = (byte)(isKeyFrame ? 0x10 : 0x00); // 0x10表示IDR帧，0x00表示非IDR帧
+        packet[5] = (byte)(isKeyFrame ? 0x10 : 0x00);
         packet[6] = 0x00;
         packet[7] = 0x00;
 
         // 设置NTP时间戳
         long ntpTimestamp;
-        if (packetCount == 0) {
-            // 第二个包（第一个视频包）使用与第一个包相同的时间戳
+        if (packetCount == 1) {
+            // 第二个包使用第一个包记录的时间戳
             ntpTimestamp = firstPacketTimestamp;
-            packetCount++;
         } else {
-            // 之后的包使用新的时间戳
+            // 之后的包使用当前时间
             ntpTimestamp = System.currentTimeMillis() + 2208988800000L;
         }
         
@@ -414,13 +433,55 @@ public class RtpSenderThread extends Thread {
             packet[8 + i] = (byte)((ntpTimestamp >> ((7 - i) * 8)) & 0xFF);
         }
 
-        // 复制NAL单元数据
-        System.arraycopy(data, 0, packet, 128, data.length);
+        // 将NAL单元复制到数据包中，每个NAL单元前加上4字节的大小前缀
+        currentOffset = 0;
+        int packetOffset = 128;
+        
+        while (currentOffset < rawData.length) {
+            if (currentOffset + 4 <= rawData.length &&
+                rawData[currentOffset] == 0 && 
+                rawData[currentOffset + 1] == 0 &&
+                rawData[currentOffset + 2] == 0 && 
+                rawData[currentOffset + 3] == 1) {
+                
+                int nextNalOffset = findNextNalUnit(rawData, currentOffset + 4);
+                if (nextNalOffset == -1) {
+                    nextNalOffset = rawData.length;
+                }
+                
+                int nalLength = nextNalOffset - (currentOffset + 4);
+                
+                // 写入NAL单元长度（大端序）
+                packet[packetOffset++] = (byte)((nalLength >> 24) & 0xFF);
+                packet[packetOffset++] = (byte)((nalLength >> 16) & 0xFF);
+                packet[packetOffset++] = (byte)((nalLength >> 8) & 0xFF);
+                packet[packetOffset++] = (byte)(nalLength & 0xFF);
+                
+                // 复制NAL单元数据
+                System.arraycopy(rawData, currentOffset + 4, packet, packetOffset, nalLength);
+                packetOffset += nalLength;
+                currentOffset = nextNalOffset;
+            } else {
+                currentOffset++;
+            }
+        }
 
         // 发送数据包
         outputStream.write(packet);
         outputStream.flush();
 
-        Log.d(TAG, String.format("发送视频包: 大小=%d字节, 是否为关键帧=%b", bufferInfo.size, isKeyFrame));
+        packetCount++; // 增加包计数
+        Log.d(TAG, String.format("发送视频包: 总大小=%d字节, NAL单元数=%d, 是否为关键帧=%b, 包序号=%d", 
+            packet.length, nalCount, isKeyFrame, packetCount));
+    }
+
+    // 查找下一个NAL单元的起始位置
+    private int findNextNalUnit(byte[] data, int startOffset) {
+        for (int i = startOffset; i < data.length - 3; i++) {
+            if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 0 && data[i + 3] == 1) {
+                return i;
+            }
+        }
+        return -1;
     }
 }
