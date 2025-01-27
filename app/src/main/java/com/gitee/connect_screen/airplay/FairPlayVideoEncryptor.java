@@ -42,9 +42,7 @@ public class FairPlayVideoEncryptor {
         }
 
         int encryptlen = ((video.length - nextEncryptCount) / 16) * 16;
-        aesCtrEncrypt.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(encryptAesKey, "AES"), new IvParameterSpec(encryptAesIV));
         aesCtrEncrypt.update(video, nextEncryptCount, encryptlen, video, nextEncryptCount);
-        System.arraycopy(video, nextEncryptCount, video, nextEncryptCount, encryptlen);
 
         int restlen = (video.length - nextEncryptCount) % 16;
         int reststart = video.length - restlen;
