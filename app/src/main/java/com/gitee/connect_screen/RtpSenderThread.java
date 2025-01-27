@@ -89,6 +89,8 @@ public class RtpSenderThread extends Thread {
     private final MediaProjection mediaProjection;
     private MediaCodec encoder;
     private VirtualDisplay virtualDisplay;
+    private long firstPacketTimestamp = 0;
+    private int packetCount = 0;
 
     public RtpSenderThread(String host, int port, MediaProjection mediaProjection) {
         this.host = host;
@@ -168,7 +170,7 @@ public class RtpSenderThread extends Thread {
                 if (outputBufferId >= 0) {
                     ByteBuffer outputBuffer = encoder.getOutputBuffer(outputBufferId);
                     if (outputBuffer != null) {
-                        // todo
+                        sendVideoPacket(outputBuffer, bufferInfo);
                     }
                     encoder.releaseOutputBuffer(outputBufferId, false);
                 }
@@ -251,10 +253,10 @@ public class RtpSenderThread extends Thread {
         packet[offset++] = 0x16;
         packet[offset++] = 0x01;
         
-        // 设置时间戳
-        long ntpTimestamp = System.currentTimeMillis() + 2208988800000L;
+        // 保存第一个包的时间戳
+        firstPacketTimestamp = System.currentTimeMillis() + 2208988800000L;
         for (int i = 0; i < 8; i++) {
-            packet[offset++] = (byte)((ntpTimestamp >> ((7 - i) * 8)) & 0xFF);
+            packet[offset++] = (byte)((firstPacketTimestamp >> ((7 - i) * 8)) & 0xFF);
         }
         
         // 设置分辨率信息 (使用IEEE 754格式)
@@ -352,5 +354,56 @@ public class RtpSenderThread extends Thread {
             }
         }
         return nals;
+    }
+
+    private void sendVideoPacket(ByteBuffer buffer, MediaCodec.BufferInfo bufferInfo) throws IOException {
+        // 跳过编码器配置数据
+        if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
+            return;
+        }
+
+        byte[] data = new byte[bufferInfo.size];
+        buffer.get(data);
+
+        // 创建数据包头部（128字节）
+        byte[] packet = new byte[128 + bufferInfo.size];
+        
+        // 设置负载大小（小端序）
+        packet[0] = (byte)(bufferInfo.size & 0xFF);
+        packet[1] = (byte)((bufferInfo.size >> 8) & 0xFF);
+        packet[2] = (byte)((bufferInfo.size >> 16) & 0xFF);
+        packet[3] = (byte)((bufferInfo.size >> 24) & 0xFF);
+
+        // 设置包类型和选项
+        // 检查是否为关键帧
+        boolean isKeyFrame = (bufferInfo.flags & MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0;
+        packet[4] = 0x00;
+        packet[5] = (byte)(isKeyFrame ? 0x10 : 0x00); // 0x10表示IDR帧，0x00表示非IDR帧
+        packet[6] = 0x00;
+        packet[7] = 0x00;
+
+        // 设置NTP时间戳
+        long ntpTimestamp;
+        if (packetCount == 0) {
+            // 第二个包（第一个视频包）使用与第一个包相同的时间戳
+            ntpTimestamp = firstPacketTimestamp;
+            packetCount++;
+        } else {
+            // 之后的包使用新的时间戳
+            ntpTimestamp = System.currentTimeMillis() + 2208988800000L;
+        }
+        
+        for (int i = 0; i < 8; i++) {
+            packet[8 + i] = (byte)((ntpTimestamp >> ((7 - i) * 8)) & 0xFF);
+        }
+
+        // 复制NAL单元数据
+        System.arraycopy(data, 0, packet, 128, data.length);
+
+        // 发送数据包
+        outputStream.write(packet);
+        outputStream.flush();
+
+        Log.d(TAG, String.format("发送视频包: 大小=%d字节, 是否为关键帧=%b", bufferInfo.size, isKeyFrame));
     }
 }
