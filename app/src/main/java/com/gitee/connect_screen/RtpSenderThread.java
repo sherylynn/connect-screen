@@ -134,6 +134,20 @@ public class RtpSenderThread extends Thread {
                             System.arraycopy(data, startIndex[1], pps, 0, nalLength[1]);
                             gotSpsPps = true;
                             Log.i(TAG, "成功获取 SPS(" + nalLength[0] + "字节) 和 PPS(" + nalLength[1] + "字节)");
+                            
+                            // 打印 SPS 内容
+                            StringBuilder spsHex = new StringBuilder();
+                            for (byte b : sps) {
+                                spsHex.append(String.format("%02X ", b));
+                            }
+                            Log.d(TAG, "SPS 内容: " + spsHex.toString());
+                            
+                            // 打印 PPS 内容
+                            StringBuilder ppsHex = new StringBuilder();
+                            for (byte b : pps) {
+                                ppsHex.append(String.format("%02X ", b));
+                            }
+                            Log.d(TAG, "PPS 内容: " + ppsHex.toString());
                         }
                     }
                     encoder.releaseOutputBuffer(outputBufferId, false);
@@ -212,7 +226,10 @@ public class RtpSenderThread extends Thread {
     }
 
     private void sendFirstPacket(byte[] sps, byte[] pps) throws IOException {
-        int payloadSize = 6 + 2 + sps.length + 2 + pps.length + 4;
+        // 添加调试日志
+        Log.d(TAG, "SPS长度: " + sps.length + ", PPS长度: " + pps.length);
+        
+        int payloadSize = 6 + 2 + sps.length + 3 + pps.length;
         byte[] packet = new byte[128 + payloadSize];
         
         // 修改为小端字节序 (little-endian)
@@ -269,23 +286,21 @@ public class RtpSenderThread extends Thread {
         System.arraycopy(payloadHeader, 0, packet, 128, 6);
         offset = 134;
         
-        // 添加SPS长度（网络字节序）
+        // 添加SPS长度（大端字节序）并记录日志
         packet[offset++] = (byte)((sps.length >> 8) & 0xFF);
         packet[offset++] = (byte)(sps.length & 0xFF);
+        Log.d(TAG, String.format("SPS长度字节: [%02X %02X]", 
+            packet[offset-2] & 0xFF, packet[offset-1] & 0xFF));
         System.arraycopy(sps, 0, packet, offset, sps.length);
         offset += sps.length;
-        
-        // 添加PPS长度（网络字节序）
+        // number of pps
+        packet[offset++] = (byte)(0x01);
+        // 添加PPS长度（大端字节序）并记录日志
         packet[offset++] = (byte)((pps.length >> 8) & 0xFF);
         packet[offset++] = (byte)(pps.length & 0xFF);
+        Log.d(TAG, String.format("PPS长度字节: [%02X %02X]", 
+            packet[offset-2] & 0xFF, packet[offset-1] & 0xFF));
         System.arraycopy(pps, 0, packet, offset, pps.length);
-        offset += pps.length;
-        
-        // 添加结尾数据
-        packet[offset++] = 0x02;
-        packet[offset++] = 0x00;
-        packet[offset++] = 0x00;
-        packet[offset] = 0x00;
         
         // 发送数据包前添加日志
         Log.d(TAG, "准备发送数据包，总大小: " + packet.length + " 字节");
