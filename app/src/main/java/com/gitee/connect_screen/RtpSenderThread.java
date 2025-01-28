@@ -23,7 +23,7 @@ Bytes 4-7:   Packet type and options
         0x1e 0x01: Unencrypted h265/HEVC SPS+PPS packets
         0x5e 0x01: Unencrypted h265 SPS+PPS packets (video stream stops, client sleeps)
 
-Bytes 8-15:  NTP timestamp (64-bit)
+Bytes 8-15:  NTP timestamp (64-bit) little endian
     - Not present in "streaming report" packets (type 0x05)
 
 Bytes 16-127: Additional metadata (for SPS/PPS packets):
@@ -261,19 +261,12 @@ public class RtpSenderThread extends Thread {
         packet[offset++] = 0x00;
         packet[offset++] = 0x16;
         packet[offset++] = 0x01;
-        
-        // 使用系统启动时间作为基准，并加上NTP时间基准点(1900年)
-        firstPacketTimestamp = System.nanoTime() / 1000L; // 转换为微秒
-        long ntpSeconds = (firstPacketTimestamp / 1000000L) + 2208988800L; // 微秒转秒，加上1900-1970的秒数
-        long fraction = ((firstPacketTimestamp % 1000000L) * (1L << 32)) / 1000000L; // 计算小数部分
-        
-        // 写入时间戳
-        for (int i = 0; i < 4; i++) {
-            packet[offset++] = (byte)((ntpSeconds >> ((3 - i) * 8)) & 0xFF);
-        }
-        for (int i = 0; i < 4; i++) {
-            packet[offset++] = (byte)((fraction >> ((3 - i) * 8)) & 0xFF);
-        }
+
+        // 设置NTP时间戳
+        firstPacketTimestamp = System.nanoTime();
+        TimestampUtils.putNtpTimestamp(packet, 8, firstPacketTimestamp);
+        offset += 8;
+
         
         // 设置分辨率信息 (使用IEEE 754格式)
         int width = 1920;
@@ -319,6 +312,9 @@ public class RtpSenderThread extends Thread {
         Log.d(TAG, String.format("PPS长度字节: [%02X %02X]", 
             packet[offset-2] & 0xFF, packet[offset-1] & 0xFF));
         System.arraycopy(pps, 0, packet, offset, pps.length);
+
+        
+        Log.d(TAG, "First packet NTP timestamp written at offset 8");
         
         // 发送数据包前添加日志
         Log.d(TAG, "准备发送数据包，总大小: " + packet.length + " 字节");
@@ -426,24 +422,12 @@ public class RtpSenderThread extends Thread {
         packet[6] = 0x00;
         packet[7] = 0x00;
 
-        // 使用系统启动时间计算当前时间戳
-        long currentTime = System.nanoTime() / 1000L; // 转换为微秒
-        long ntpSeconds, ntpFraction;
-        
+        // 设置NTP时间戳
+        long currentTime = System.nanoTime();
         if (packetCount == 1) {
-            // 第一个包使用firstPacketTimestamp
             currentTime = firstPacketTimestamp;
         }
-        ntpSeconds = (currentTime / 1000000L) + 2208988800L;
-        ntpFraction = ((currentTime % 1000000L) * (1L << 32)) / 1000000L;
-        
-        // 写入时间戳
-        for (int i = 0; i < 4; i++) {
-            packet[8 + i] = (byte)((ntpSeconds >> ((3 - i) * 8)) & 0xFF);
-        }
-        for (int i = 0; i < 4; i++) {
-            packet[12 + i] = (byte)((ntpFraction >> ((3 - i) * 8)) & 0xFF);
-        }
+        TimestampUtils.putNtpTimestamp(packet, 8, currentTime);
 
         // 将NAL单元复制到数据包中，每个NAL单元前加上4字节的大小前缀
         currentOffset = 0;
