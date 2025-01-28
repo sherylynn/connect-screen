@@ -1,8 +1,10 @@
 package com.gitee.connect_screen;
+import android.util.Log;
+
 public class TimestampUtils {
+    private static final String TAG = "TimestampUtils";
 
     public static final long SECOND_IN_NSECS = 1000000000L;
-    public static final long SECONDS_FROM_1900_TO_1970 = 2208988800L;
 
     /**
      * 将当前系统时间转换为NTP时间戳格式并写入字节数组(小端序)
@@ -13,23 +15,37 @@ public class TimestampUtils {
     public static void putNtpTimestamp(byte[] buffer, int offset, long currentTimeNanos) {
         // 1. 计算秒数部分
         long seconds = currentTimeNanos / SECOND_IN_NSECS;
-        seconds += SECONDS_FROM_1900_TO_1970; // 加上1900到1970的秒数差值
 
         // 2. 计算小数部分(转换为32位定点数)
         long nanos = currentTimeNanos % SECOND_IN_NSECS;
         long fraction = (nanos << 32) / SECOND_IN_NSECS;
 
+        // 将秒数和小数部分组合成完整的NTP时间戳
+        long ntpTimestamp = (seconds << 32) | fraction;
+
         // 写入秒数(小端序)
-        buffer[offset] = (byte) (seconds & 0xFF);
-        buffer[offset + 1] = (byte) ((seconds >> 8) & 0xFF);
-        buffer[offset + 2] = (byte) ((seconds >> 16) & 0xFF);
-        buffer[offset + 3] = (byte) ((seconds >> 24) & 0xFF);
+        buffer[offset + 4] = (byte) ((ntpTimestamp >> 32) & 0xFF);
+        buffer[offset + 5] = (byte) ((ntpTimestamp >> 40) & 0xFF);
+        buffer[offset + 6] = (byte) ((ntpTimestamp >> 48) & 0xFF);
+        buffer[offset + 7] = (byte) ((ntpTimestamp >> 56) & 0xFF);
 
         // 写入小数部分(小端序)
-        buffer[offset + 4] = (byte) (fraction & 0xFF);
-        buffer[offset + 5] = (byte) ((fraction >> 8) & 0xFF);
-        buffer[offset + 6] = (byte) ((fraction >> 16) & 0xFF);
-        buffer[offset + 7] = (byte) ((fraction >> 24) & 0xFF);
+        buffer[offset] = (byte) (ntpTimestamp & 0xFF);
+        buffer[offset + 1] = (byte) ((ntpTimestamp >> 8) & 0xFF);
+        buffer[offset + 2] = (byte) ((ntpTimestamp >> 16) & 0xFF);
+        buffer[offset + 3] = (byte) ((ntpTimestamp >> 24) & 0xFF);
+
+        // 添加日志
+        Log.d(TAG, String.format("写入NTP时间戳: 当前系统时间=%d ns (%.6f s), " +
+                        "NTP完整时间戳=0x%016X, " +
+                        "NTP秒数=%d, 小数部分=%d, " +
+                        "转换后时间=%.6f s",
+                currentTimeNanos,
+                currentTimeNanos / (double)SECOND_IN_NSECS,
+                ntpTimestamp,
+                seconds,
+                fraction,
+                (seconds) + (fraction / (double)(1L << 32))));
     }
 
     /**
@@ -52,7 +68,17 @@ public class TimestampUtils {
                 (buffer[offset + 4] & 0xFFL);
 
         // 转换为纳秒
-        seconds -= SECONDS_FROM_1900_TO_1970; // 减去1900到1970的秒数差值
-        return (seconds * SECOND_IN_NSECS) + ((fraction * SECOND_IN_NSECS) >> 32);
+        long originalSeconds = seconds;
+        long nanos = (seconds * SECOND_IN_NSECS) + ((fraction * SECOND_IN_NSECS) >> 32);
+
+        // 添加日志
+        Log.d(TAG, String.format("读取NTP时间戳: NTP秒数=%d, 小数部分=%d, " +
+                        "转换后纳秒=%d ns (%.6f s)",
+                originalSeconds,
+                fraction,
+                nanos,
+                nanos / (double)SECOND_IN_NSECS));
+
+        return nanos;
     }
 }
