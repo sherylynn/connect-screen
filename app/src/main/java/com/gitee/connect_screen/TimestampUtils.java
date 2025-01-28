@@ -4,21 +4,21 @@ import android.util.Log;
 public class TimestampUtils {
     private static final String TAG = "TimestampUtils";
 
-    public static final long SECOND_IN_NSECS = 1000000000L;
+    public static final long MILLIS_TO_NANOS = 1000000L;
 
     /**
      * 将当前系统时间转换为NTP时间戳格式并写入字节数组(小端序)
      * @param buffer 目标字节数组
      * @param offset 写入位置的偏移量(通常是8)
-     * @param currentTimeNanos 当前系统时间(纳秒)
+     * @param currentTimeMillis 当前系统时间(毫秒)
      */
-    public static void putNtpTimestamp(byte[] buffer, int offset, long currentTimeNanos) {
+    public static void putNtpTimestamp(byte[] buffer, int offset, long currentTimeMillis) {
         // 1. 计算秒数部分
-        long seconds = currentTimeNanos / SECOND_IN_NSECS;
+        long seconds = currentTimeMillis / 1000L;
 
         // 2. 计算小数部分(转换为32位定点数)
-        long nanos = currentTimeNanos % SECOND_IN_NSECS;
-        long fraction = (nanos << 32) / SECOND_IN_NSECS;
+        long millis = currentTimeMillis % 1000L;
+        long fraction = (millis * 0x100000000L) / 1000L;
 
         // 将秒数和小数部分组合成完整的NTP时间戳
         long ntpTimestamp = (seconds << 32) | fraction;
@@ -36,12 +36,12 @@ public class TimestampUtils {
         buffer[offset + 3] = (byte) ((ntpTimestamp >> 24) & 0xFF);
 
         // 添加日志
-        Log.d(TAG, String.format("写入NTP时间戳: 当前系统时间=%d ns (%.6f s), " +
+        Log.d(TAG, String.format("写入NTP时间戳: 当前系统时间=%d ms (%.3f s), " +
                         "NTP完整时间戳=0x%016X, " +
                         "NTP秒数=%d, 小数部分=%d, " +
-                        "转换后时间=%.6f s",
-                currentTimeNanos,
-                currentTimeNanos / (double)SECOND_IN_NSECS,
+                        "转换后时间=%.3f s",
+                currentTimeMillis,
+                currentTimeMillis / 1000.0,
                 ntpTimestamp,
                 seconds,
                 fraction,
@@ -69,7 +69,7 @@ public class TimestampUtils {
 
         // 转换为纳秒
         long originalSeconds = seconds;
-        long nanos = (seconds * SECOND_IN_NSECS) + ((fraction * SECOND_IN_NSECS) >> 32);
+        long nanos = (seconds * MILLIS_TO_NANOS) + ((fraction * MILLIS_TO_NANOS) >> 32);
 
         // 添加日志
         Log.d(TAG, String.format("读取NTP时间戳: NTP秒数=%d, 小数部分=%d, " +
@@ -77,7 +77,7 @@ public class TimestampUtils {
                 originalSeconds,
                 fraction,
                 nanos,
-                nanos / (double)SECOND_IN_NSECS));
+                nanos / (double)MILLIS_TO_NANOS));
 
         return nanos;
     }

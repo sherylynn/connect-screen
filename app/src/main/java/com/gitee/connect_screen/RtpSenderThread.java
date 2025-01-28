@@ -263,7 +263,7 @@ public class RtpSenderThread extends Thread {
         packet[offset++] = 0x01;
 
         // 设置NTP时间戳
-        firstPacketTimestamp = System.nanoTime();
+        firstPacketTimestamp = System.currentTimeMillis();
         TimestampUtils.putNtpTimestamp(packet, 8, firstPacketTimestamp);
         offset += 8;
 
@@ -423,7 +423,7 @@ public class RtpSenderThread extends Thread {
         packet[7] = 0x00;
 
         // 设置NTP时间戳
-        long currentTime = System.nanoTime();
+        long currentTime = System.currentTimeMillis();
         if (packetCount == 1) {
             currentTime = firstPacketTimestamp;
         }
