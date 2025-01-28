@@ -34,6 +34,12 @@ import java.io.ByteArrayOutputStream;
 import android.content.Intent;
 import android.media.projection.MediaProjectionManager;
 import android.widget.Toast;
+import android.net.wifi.WifiManager;
+import android.net.wifi.WifiInfo;
+import java.util.Collections;
+import java.util.List;
+import java.net.NetworkInterface;
+import java.lang.StringBuilder;
 
 public class MirrorHomeFragment extends Fragment {
     private static final String TAG = "MirrorHomeFragment";
@@ -357,10 +363,10 @@ public class MirrorHomeFragment extends Fragment {
                 setupDict.put("osVersion", "17.6.1");
                 setupDict.put("ekey", decodeBase64("RlBMWQECAQAAAAA8AAAAAJkBYx+MhWFfX7SWE1/KGIQAAAAQRk8i+JxY/UiO0KQ6YaNn9LfVDlQB04zcOPjatJZbPOMVUtTs"));
                 setupDict.put("sessionCorrelationUUID", "22E39508-74C6-4BCE-8685-AB01DB111C21");
-                setupDict.put("deviceID", "08:FF:44:5D:A5:1E");
+                setupDict.put("deviceID", getMacAddress(context));  // 使用真实的 MAC 地址
                 setupDict.put("model", "iPad14,2");
                 setupDict.put("name", "舒舒平板");
-                setupDict.put("macAddress", "26:59:51:2E:80:25");
+                setupDict.put("macAddress", getMacAddress(context));  // 使用真实的 MAC 地址
                 
                 // 将 plist 转换为二进制数据
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -511,6 +517,41 @@ public class MirrorHomeFragment extends Fragment {
         // 添加 Base64 解码辅助方法
         private byte[] decodeBase64(String base64String) {
             return android.util.Base64.decode(base64String, android.util.Base64.DEFAULT);
+        }
+
+        // 添加获取 MAC 地址的方法
+        private String getMacAddress(Context context) {
+            WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+            WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+            String macAddress = wifiInfo.getMacAddress();
+            
+            // 如果获取不到或者是默认值，尝试通过网络接口获取
+            if (macAddress == null || macAddress.equals("02:00:00:00:00:00")) {
+                try {
+                    List<NetworkInterface> all = Collections.list(NetworkInterface.getNetworkInterfaces());
+                    for (NetworkInterface nif : all) {
+                        if (!nif.getName().equalsIgnoreCase("wlan0")) continue;
+
+                        byte[] macBytes = nif.getHardwareAddress();
+                        if (macBytes == null) {
+                            return "02:00:00:00:00:00";
+                        }
+
+                        StringBuilder sb = new StringBuilder();
+                        for (byte b : macBytes) {
+                            sb.append(String.format("%02X:", b));
+                        }
+
+                        if (sb.length() > 0) {
+                            sb.deleteCharAt(sb.length() - 1);
+                        }
+                        return sb.toString();
+                    }
+                } catch (Exception ex) {
+                    return "02:00:00:00:00:00";
+                }
+            }
+            return macAddress;
         }
     }
 

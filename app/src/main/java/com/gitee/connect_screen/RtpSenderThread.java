@@ -262,10 +262,17 @@ public class RtpSenderThread extends Thread {
         packet[offset++] = 0x16;
         packet[offset++] = 0x01;
         
-        // 保存第一个包的时间戳
-        firstPacketTimestamp = System.currentTimeMillis() + 2208988800000L;
-        for (int i = 0; i < 8; i++) {
-            packet[offset++] = (byte)((firstPacketTimestamp >> ((7 - i) * 8)) & 0xFF);
+        // 使用系统启动时间作为基准，并加上NTP时间基准点(1900年)
+        firstPacketTimestamp = System.nanoTime() / 1000L; // 转换为微秒
+        long ntpSeconds = (firstPacketTimestamp / 1000000L) + 2208988800L; // 微秒转秒，加上1900-1970的秒数
+        long fraction = ((firstPacketTimestamp % 1000000L) * (1L << 32)) / 1000000L; // 计算小数部分
+        
+        // 写入时间戳
+        for (int i = 0; i < 4; i++) {
+            packet[offset++] = (byte)((ntpSeconds >> ((3 - i) * 8)) & 0xFF);
+        }
+        for (int i = 0; i < 4; i++) {
+            packet[offset++] = (byte)((fraction >> ((3 - i) * 8)) & 0xFF);
         }
         
         // 设置分辨率信息 (使用IEEE 754格式)
@@ -419,18 +426,23 @@ public class RtpSenderThread extends Thread {
         packet[6] = 0x00;
         packet[7] = 0x00;
 
-        // 设置NTP时间戳
-        long ntpTimestamp;
-        if (packetCount == 1) {
-            // 第二个包使用第一个包记录的时间戳
-            ntpTimestamp = firstPacketTimestamp;
-        } else {
-            // 之后的包使用当前时间
-            ntpTimestamp = System.currentTimeMillis() + 2208988800000L;
-        }
+        // 使用系统启动时间计算当前时间戳
+        long currentTime = System.nanoTime() / 1000L; // 转换为微秒
+        long ntpSeconds, ntpFraction;
         
-        for (int i = 0; i < 8; i++) {
-            packet[8 + i] = (byte)((ntpTimestamp >> ((7 - i) * 8)) & 0xFF);
+        if (packetCount == 1) {
+            // 第一个包使用firstPacketTimestamp
+            currentTime = firstPacketTimestamp;
+        }
+        ntpSeconds = (currentTime / 1000000L) + 2208988800L;
+        ntpFraction = ((currentTime % 1000000L) * (1L << 32)) / 1000000L;
+        
+        // 写入时间戳
+        for (int i = 0; i < 4; i++) {
+            packet[8 + i] = (byte)((ntpSeconds >> ((3 - i) * 8)) & 0xFF);
+        }
+        for (int i = 0; i < 4; i++) {
+            packet[12 + i] = (byte)((ntpFraction >> ((3 - i) * 8)) & 0xFF);
         }
 
         // 将NAL单元复制到数据包中，每个NAL单元前加上4字节的大小前缀
