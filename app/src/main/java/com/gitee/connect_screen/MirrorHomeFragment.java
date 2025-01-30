@@ -333,13 +333,45 @@ public class MirrorHomeFragment extends Fragment {
                 response = readResponse(in);
                 fragment.logOnMainThread("收到 pair-setup 响应：" + response);
 
+                // 添加 pair-verify 请求
+                String pairVerifyRequest = 
+                    "POST /pair-verify RTSP/1.0\r\n" +
+                    "X-Apple-PD: 1\r\n" +
+                    "X-Apple-AbsoluteTime: 759932340\r\n" +
+                    "Content-Length: 68\r\n" +
+                    "Content-Type: application/octet-stream\r\n" +
+                    "CSeq: 2\r\n" +
+                    "DACP-ID: 72B5A52C22E5647C\r\n" +
+                    "Active-Remote: 2558876681\r\n" +
+                    "User-Agent: AirPlay/775.3.1\r\n\r\n";
+
+                byte[] pairVerifyData = new byte[] {
+                    0x01, 0x00, 0x00, 0x00, (byte)0xaa, 0x6a, (byte)0xeb, 0x21, 
+                    0x57, (byte)0xa5, 0x77, 0x76, (byte)0xec, (byte)0xf4, (byte)0xbd, (byte)0xc5,
+                    0x75, 0x74, 0x34, 0x1c, (byte)0xa7, (byte)0x8d, (byte)0xd5, 0x73, 
+                    0x63, (byte)0xbb, (byte)0xeb, 0x0f, 0x46, 0x24, (byte)0xea, (byte)0xb3,
+                    0x7b, 0x1b, 0x7b, 0x71, (byte)0xb7, 0x75, (byte)0xc9, 0x79, 
+                    0x75, 0x5a, 0x71, (byte)0xd3, 0x09, (byte)0x81, (byte)0xdc, (byte)0xd4,
+                    0x57, (byte)0xa9, 0x3c, (byte)0x92, 0x5f, 0x0a, 0x26, 0x03, 
+                    0x58, (byte)0x87, (byte)0xf8, 0x3b, (byte)0xea, 0x38, 0x76, 0x09,
+                    0x38, (byte)0xd3, (byte)0xf4, (byte)0xdf
+                };
+
+                out.write(pairVerifyRequest.getBytes());
+                out.write(pairVerifyData);
+                out.flush();
+
+                // 读取 pair-verify 响应
+                response = readResponse(in);
+                fragment.logOnMainThread("收到 pair-verify 响应：" + response);
+
                 // 发送 FP-SETUP 请求
                 String fpSetupRequest = 
                     "POST /fp-setup RTSP/1.0\r\n" +
                     "X-Apple-ET: 32\r\n" +
                     "Content-Length: 16\r\n" +
                     "Content-Type: application/octet-stream\r\n" +
-                    "CSeq: 2\r\n" +
+                    "CSeq: 3\r\n" +
                     "DACP-ID: 2CC18E0712799F6D\r\n" +
                     "Active-Remote: 1140620407\r\n" +
                     "User-Agent: AirPlay/775.3.1\r\n\r\n";
@@ -359,7 +391,7 @@ public class MirrorHomeFragment extends Fragment {
                     "X-Apple-ET: 32\r\n" +
                     "Content-Length: 164\r\n" +
                     "Content-Type: application/octet-stream\r\n" +
-                    "CSeq: 3\r\n" +
+                    "CSeq: 4\r\n" +
                     "DACP-ID: 2CC18E0712799F6D\r\n" +
                     "Active-Remote: 1140620407\r\n" +
                     "User-Agent: AirPlay/775.3.1\r\n\r\n";
@@ -403,7 +435,7 @@ public class MirrorHomeFragment extends Fragment {
                     "SETUP rtsp://" + host + "/709908614630099013 RTSP/1.0\r\n" +
                     "Content-Length: " + plistData.length + "\r\n" +
                     "Content-Type: application/x-apple-binary-plist\r\n" +
-                    "CSeq: 4\r\n" +
+                    "CSeq: 5\r\n" +
                     "DACP-ID: 2CC18E0712799F6D\r\n" +
                     "Active-Remote: 1140620407\r\n" +
                     "User-Agent: AirPlay/775.3.1\r\n\r\n";
