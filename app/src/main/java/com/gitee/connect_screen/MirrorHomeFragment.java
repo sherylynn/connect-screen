@@ -563,6 +563,7 @@ public class MirrorHomeFragment extends Fragment {
 
                 // 解析二进制 plist
                 NSDictionary responseDict = (NSDictionary)PropertyListParser.parse(response.body);
+                fragment.logOnMainThread("收到第二个 SETUP 响应 body：" + responseDict.toXMLPropertyList());
                 NSArray responseStreams = (NSArray)responseDict.get("streams");
                 NSDictionary streamInfo = (NSDictionary)responseStreams.objectAtIndex(0);
                 
