@@ -15,6 +15,8 @@ import android.content.pm.PackageManager;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import net.i2p.crypto.eddsa.EdDSAPublicKey;
+import net.i2p.crypto.eddsa.KeyPairGenerator;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -36,6 +38,11 @@ import android.media.projection.MediaProjectionManager;
 import android.widget.Toast;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiInfo;
+
+import org.whispersystems.curve25519.Curve25519;
+import org.whispersystems.curve25519.Curve25519KeyPair;
+
+import java.security.KeyPair;
 import java.util.Collections;
 import java.util.List;
 import java.net.NetworkInterface;
@@ -267,8 +274,14 @@ public class MirrorHomeFragment extends Fragment {
                 out.flush();
                 
                 // 读取 OPTIONS 响应
-                String response = readResponse(in);
-                fragment.logOnMainThread("收到 OPTIONS 响应：" + response);
+                RtspResponse response = readResponse(in);
+                fragment.logOnMainThread("收到 OPTIONS 响应：" + response.header);
+
+                // 如果需要处理 body
+                if (response.body.length > 0) {
+                    // 处理 body 数据
+                    fragment.logOnMainThread("收到 body 数据，长度：" + response.body.length);
+                }
 
                 // 发送 GET /info 请求
                 out.write(INFO_REQUEST.getBytes());
@@ -276,33 +289,11 @@ public class MirrorHomeFragment extends Fragment {
 
                 // 读取 info 响应
                 response = readResponse(in);
-                fragment.logOnMainThread("解析 info: " + response);
-
-                // 解析响应头中的 Content-Length
-                int contentLength = 0;
-                for (String headerLine : response.split("\n")) {
-                    if (headerLine.startsWith("Content-Length:")) {
-                        contentLength = Integer.parseInt(headerLine.substring("Content-Length:".length()).trim());
-                        break;
-                    }
-                }
-
-                fragment.logOnMainThread("INFO resp content length: " + contentLength);
-
-                // 读取二进制 plist 数据
-                byte[] plistData = new byte[contentLength];
-                int bytesRead = 0;
-                while (bytesRead < contentLength) {
-                    int result = in.read(plistData, bytesRead, contentLength - bytesRead);
-                    if (result == -1) break;
-                    bytesRead += result;
-                }
-
-                fragment.logOnMainThread("INFO bytes read: " + bytesRead);
+                fragment.logOnMainThread("解析 info: " + response.header);
 
                 // 解析 plist
                 try {
-                    NSDictionary rootDict = (NSDictionary)PropertyListParser.parse(new ByteArrayInputStream(plistData));
+                    NSDictionary rootDict = (NSDictionary)PropertyListParser.parse(response.body);
                     fragment.logOnMainThread("解析 INFO plist 内容：" + rootDict.toXMLPropertyList());
                 } catch (Exception e) {
                     fragment.logOnMainThread("解析 plist 失败：" + e.getMessage());
@@ -331,9 +322,20 @@ public class MirrorHomeFragment extends Fragment {
 
                 // 读取 pair-setup 响应
                 response = readResponse(in);
-                fragment.logOnMainThread("收到 pair-setup 响应：" + response);
+                fragment.logOnMainThread("收到 pair-setup 响应：" + response.header);
 
                 // 添加 pair-verify 请求
+                KeyPair keyPair = new KeyPairGenerator().generateKeyPair();
+                Curve25519 curve25519 = Curve25519.getInstance(Curve25519.BEST);
+                Curve25519KeyPair curve25519KeyPair = curve25519.generateKeyPair();
+                byte[] pairVerify1Request = new byte[68];
+                pairVerify1Request[0] = 1;
+                pairVerify1Request[1] = 0;
+                pairVerify1Request[2] = 0;
+                pairVerify1Request[3] = 0;
+                System.arraycopy(curve25519KeyPair.getPublicKey(), 0, pairVerify1Request, 4, 32);
+                System.arraycopy(((EdDSAPublicKey) keyPair.getPublic()).getAbyte(), 0, pairVerify1Request, 36, 32);
+
                 String pairVerifyRequest = 
                     "POST /pair-verify RTSP/1.0\r\n" +
                     "X-Apple-PD: 1\r\n" +
@@ -345,25 +347,13 @@ public class MirrorHomeFragment extends Fragment {
                     "Active-Remote: 2558876681\r\n" +
                     "User-Agent: AirPlay/775.3.1\r\n\r\n";
 
-                byte[] pairVerifyData = new byte[] {
-                    0x01, 0x00, 0x00, 0x00, (byte)0xaa, 0x6a, (byte)0xeb, 0x21, 
-                    0x57, (byte)0xa5, 0x77, 0x76, (byte)0xec, (byte)0xf4, (byte)0xbd, (byte)0xc5,
-                    0x75, 0x74, 0x34, 0x1c, (byte)0xa7, (byte)0x8d, (byte)0xd5, 0x73, 
-                    0x63, (byte)0xbb, (byte)0xeb, 0x0f, 0x46, 0x24, (byte)0xea, (byte)0xb3,
-                    0x7b, 0x1b, 0x7b, 0x71, (byte)0xb7, 0x75, (byte)0xc9, 0x79, 
-                    0x75, 0x5a, 0x71, (byte)0xd3, 0x09, (byte)0x81, (byte)0xdc, (byte)0xd4,
-                    0x57, (byte)0xa9, 0x3c, (byte)0x92, 0x5f, 0x0a, 0x26, 0x03, 
-                    0x58, (byte)0x87, (byte)0xf8, 0x3b, (byte)0xea, 0x38, 0x76, 0x09,
-                    0x38, (byte)0xd3, (byte)0xf4, (byte)0xdf
-                };
-
                 out.write(pairVerifyRequest.getBytes());
-                out.write(pairVerifyData);
+                out.write(pairVerify1Request);
                 out.flush();
 
                 // 读取 pair-verify 响应
                 response = readResponse(in);
-                fragment.logOnMainThread("收到第一个 pair-verify 响应：" + response);
+                fragment.logOnMainThread("收到第一个 pair-verify 响应：" + response.header);
 
                 // 发送第二个 pair-verify 请求
                 String pairVerifyRequest2 = 
@@ -395,7 +385,7 @@ public class MirrorHomeFragment extends Fragment {
 
                 // 读取第二个 pair-verify 响应
                 response = readResponse(in);
-                fragment.logOnMainThread("收到第二个 pair-verify 响应：" + response);
+                fragment.logOnMainThread("收到第二个 pair-verify 响应：" + response.header);
 
                 // 发送 FP-SETUP 请求
                 String fpSetupRequest = 
@@ -415,7 +405,7 @@ public class MirrorHomeFragment extends Fragment {
 
                 // 读取fp-setup响应
                 response = readResponse(in);
-                fragment.logOnMainThread("收到FP-SETUP响应：" + response);
+                fragment.logOnMainThread("收到FP-SETUP响应：" + response.header);
                 
                 // 发送第二个 FP-SETUP 请求
                 String fpSetupRequest2 = 
@@ -435,7 +425,7 @@ public class MirrorHomeFragment extends Fragment {
 
                 // 读取第二个fp-setup响应
                 response = readResponse(in);
-                fragment.logOnMainThread("收到第二个FP-SETUP响应：" + response);
+                fragment.logOnMainThread("收到第二个FP-SETUP响应：" + response.header);
                 
                 // 构建 SETUP 请求的 plist
                 NSDictionary setupDict = new NSDictionary();
@@ -460,7 +450,7 @@ public class MirrorHomeFragment extends Fragment {
                 // 将 plist 转换为二进制数据
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 PropertyListParser.saveAsBinary(setupDict, baos);
-                plistData = baos.toByteArray();
+                byte[] plistData = baos.toByteArray();
                 
                 // 构建 SETUP 请求
                 String setupRequest = 
@@ -479,7 +469,7 @@ public class MirrorHomeFragment extends Fragment {
                 
                 // 读取 SETUP 响应
                 response = readResponse(in);
-                fragment.logOnMainThread("收到 SETUP 响应：" + response);
+                fragment.logOnMainThread("收到 SETUP 响应：" + response.header);
                 
                 // 发送 RECORD 请求
                 String recordRequest = 
@@ -494,7 +484,7 @@ public class MirrorHomeFragment extends Fragment {
                 
                 // 读取 RECORD 响应
                 response = readResponse(in);
-                fragment.logOnMainThread("收到 RECORD 响应：" + response);
+                fragment.logOnMainThread("收到 RECORD 响应：" + response.header);
                 
                 // 构建第二个 SETUP 请求的 plist
                 NSDictionary setupDict2 = new NSDictionary();
@@ -541,28 +531,10 @@ public class MirrorHomeFragment extends Fragment {
                 
                 // 读取第二个 SETUP 响应
                 response = readResponse(in);
-                fragment.logOnMainThread("收到第二个 SETUP 响应：" + response);
-
-                // 解析第二个 SETUP 响应中的二进制 plist 数据
-                contentLength = 0;
-                String contentLengthHeader = "Content-Length: ";
-                int clIndex = response.indexOf(contentLengthHeader);
-                if (clIndex != -1) {
-                    int endIndex = response.indexOf("\r\n", clIndex);
-                    contentLength = Integer.parseInt(response.substring(clIndex + contentLengthHeader.length(), endIndex).trim());
-                }
-
-                // 读取二进制 plist 数据
-                byte[] plistResponseData = new byte[contentLength];
-                int totalBytesRead = 0;
-                while (totalBytesRead < contentLength) {
-                    bytesRead = in.read(plistResponseData, totalBytesRead, contentLength - totalBytesRead);
-                    if (bytesRead == -1) break;
-                    totalBytesRead += bytesRead;
-                }
+                fragment.logOnMainThread("收到第二个 SETUP 响应：" + response.header);
 
                 // 解析二进制 plist
-                NSDictionary responseDict = (NSDictionary)PropertyListParser.parse(plistResponseData);
+                NSDictionary responseDict = (NSDictionary)PropertyListParser.parse(response.body);
                 NSArray responseStreams = (NSArray)responseDict.get("streams");
                 NSDictionary streamInfo = (NSDictionary)responseStreams.objectAtIndex(0);
                 
@@ -584,23 +556,54 @@ public class MirrorHomeFragment extends Fragment {
             }
         }
 
-        // 新增辅助方法来读取响应
-        private String readResponse(InputStream in) throws IOException {
-            StringBuilder response = new StringBuilder();
+        // 修改为返回包含 header 和 body 的类
+        private static class RtspResponse {
+            public final String header;
+            public final byte[] body;
+
+            public RtspResponse(String header, byte[] body) {
+                this.header = header;
+                this.body = body;
+            }
+        }
+
+        private RtspResponse readResponse(InputStream in) throws IOException {
+            StringBuilder headerBuilder = new StringBuilder();
             byte[] buffer = new byte[1];
             
-            // 读取直到遇到空行（\r\n\r\n）
+            // 读取 header 直到遇到空行（\r\n\r\n）
             int consecutiveNewlines = 0;
             while (consecutiveNewlines < 4) {
                 if (in.read(buffer) == -1) break;
-                response.append((char) buffer[0]);
+                headerBuilder.append((char) buffer[0]);
                 if (buffer[0] == '\r' || buffer[0] == '\n') {
                     consecutiveNewlines++;
                 } else {
                     consecutiveNewlines = 0;
                 }
             }
-            return response.toString();
+            
+            String header = headerBuilder.toString();
+            
+            // 解析 Content-Length
+            int contentLength = 0;
+            for (String line : header.split("\r\n")) {
+                if (line.toLowerCase().startsWith("content-length:")) {
+                    contentLength = Integer.parseInt(line.substring("content-length:".length()).trim());
+                    break;
+                }
+            }
+            
+            // 读取 body
+            byte[] body = new byte[contentLength];
+            int totalBytesRead = 0;
+            while (totalBytesRead < contentLength) {
+                int bytesRead = in.read(body, totalBytesRead, contentLength - totalBytesRead);
+                if (bytesRead == -1) break;
+                totalBytesRead += bytesRead;
+            }
+            
+            return new RtspResponse(header, body);
         }
 
         // 添加 Base64 解码辅助方法
