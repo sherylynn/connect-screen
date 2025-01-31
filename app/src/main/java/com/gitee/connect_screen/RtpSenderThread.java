@@ -95,16 +95,11 @@ public class RtpSenderThread extends Thread {
     private int packetCount = 0;
     private FairPlayVideoEncryptor encryptor;
 
-    public RtpSenderThread(String host, int port, MediaProjection mediaProjection) {
+    public RtpSenderThread(String host, int port, MediaProjection mediaProjection, FairPlayVideoEncryptor encryptor) {
         this.host = host;
         this.port = port;
         this.mediaProjection = mediaProjection;
-        try {
-            // 初始化加密器，streamConnectionID可以是固定值或随机生成
-            this.encryptor = new FairPlayVideoEncryptor();
-        } catch (Exception e) {
-            Log.e(TAG, "初始化加密器失败: " + e.getMessage());
-        }
+        this.encryptor = encryptor;
     }
 
     @Override

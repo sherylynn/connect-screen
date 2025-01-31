@@ -8,7 +8,9 @@ import java.security.MessageDigest;
 import java.util.Arrays;
 
 public class FairPlayVideoEncryptor {
+
     private final byte[] aesKey;
+    private final byte[] sharedSecret;
     private final String streamConnectionID;
 
     private final Cipher aesCtrEncrypt;
@@ -16,18 +18,15 @@ public class FairPlayVideoEncryptor {
 
     private int nextEncryptCount;
 
-    private byte[] encryptAesKey;
-    private byte[] encryptAesIV;
-
-    public FairPlayVideoEncryptor() throws Exception {
-        String streamConnectionID = "7360034197512602439";
-        this.aesKey = new byte[] {
-            0x46, (byte)0xa9, (byte)0xa7, 0x4a, 
-            0x0d, (byte)0xbf, 0x2b, 0x58, 
-            (byte)0xa1, (byte)0x92, 0x1c, 0x26, 
-            (byte)0xf7, 0x66, 0x77, 0x2d
+    public FairPlayVideoEncryptor(byte[] sharedSecret) throws Exception {
+        this.aesKey =  new byte[] {
+                0x46, (byte)0xa9, (byte)0xa7, 0x4a,
+                0x0d, (byte)0xbf, 0x2b, 0x58,
+                (byte)0xa1, (byte)0x92, 0x1c, 0x26,
+                (byte)0xf7, 0x66, 0x77, 0x2d
         };
-        this.streamConnectionID = streamConnectionID;
+        this.sharedSecret = sharedSecret;
+        this.streamConnectionID = "7360034197512602439";
 
         aesCtrEncrypt = Cipher.getInstance("AES/CTR/NoPadding");
 
@@ -37,12 +36,13 @@ public class FairPlayVideoEncryptor {
     public void encrypt(byte[] video) throws Exception {
         if (nextEncryptCount > 0) {
             for (int i = 0; i < nextEncryptCount; i++) {
-                video[i] ^= og[(16 - nextEncryptCount) + i];
+                video[i] = (byte) (video[i] ^ og[(16 - nextEncryptCount) + i]);
             }
         }
 
         int encryptlen = ((video.length - nextEncryptCount) / 16) * 16;
         aesCtrEncrypt.update(video, nextEncryptCount, encryptlen, video, nextEncryptCount);
+        System.arraycopy(video, nextEncryptCount, video, nextEncryptCount, encryptlen);
 
         int restlen = (video.length - nextEncryptCount) % 16;
         int reststart = video.length - restlen;
@@ -58,36 +58,25 @@ public class FairPlayVideoEncryptor {
 
     private void initAesCtrCipher() throws Exception {
         MessageDigest sha512Digest = MessageDigest.getInstance("SHA-512");
-        
+        sha512Digest.update(aesKey);
+        sha512Digest.update(sharedSecret);
+        byte[] eaesKey = sha512Digest.digest();
+
         byte[] skey = ("AirPlayStreamKey" + streamConnectionID).getBytes(StandardCharsets.UTF_8);
         sha512Digest.update(skey);
-        sha512Digest.update(aesKey);
+        sha512Digest.update(eaesKey, 0, 16);
         byte[] hash1 = sha512Digest.digest();
 
         byte[] siv = ("AirPlayStreamIV" + streamConnectionID).getBytes(StandardCharsets.UTF_8);
         sha512Digest.update(siv);
-        sha512Digest.update(aesKey);
+        sha512Digest.update(eaesKey, 0, 16);
         byte[] hash2 = sha512Digest.digest();
 
-        encryptAesKey = new byte[16];
-        encryptAesIV = new byte[16];
-        System.arraycopy(hash1, 0, encryptAesKey, 0, 16);
-        System.arraycopy(hash2, 0, encryptAesIV, 0, 16);
+        byte[] decryptAesKey = new byte[16];
+        byte[] decryptAesIV = new byte[16];
+        System.arraycopy(hash1, 0, decryptAesKey, 0, 16);
+        System.arraycopy(hash2, 0, decryptAesIV, 0, 16);
 
-        StringBuilder keyLog = new StringBuilder("Video AES Key: \n");
-        StringBuilder ivLog = new StringBuilder("Video AES IV: \n");
-        
-        for (byte b : encryptAesKey) {
-            keyLog.append(String.format("%02x\n", b & 0xFF));
-        }
-        
-        for (byte b : encryptAesIV) {
-            ivLog.append(String.format("%02x\n", b & 0xFF));
-        }
-        
-        System.out.println(keyLog.toString());
-        System.out.println(ivLog.toString());
-
-        aesCtrEncrypt.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(encryptAesKey, "AES"), new IvParameterSpec(encryptAesIV));
+        aesCtrEncrypt.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(decryptAesKey, "AES"), new IvParameterSpec(decryptAesIV));
     }
-} 
+}

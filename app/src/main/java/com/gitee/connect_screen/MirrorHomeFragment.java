@@ -23,6 +23,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.dd.plist.NSArray;
+import com.gitee.connect_screen.airplay.FairPlayVideoEncryptor;
 import com.gitee.connect_screen.job.ExitAll;
 import com.dd.plist.PropertyListParser;
 import com.dd.plist.NSDictionary;
@@ -570,7 +571,8 @@ public class MirrorHomeFragment extends Fragment {
                 fragment.logOnMainThread("获取到数据端口: " + dataPort);
                 
                 // 创建并启动 RTP 发送线程
-                RtpSenderThread rtpSender = new RtpSenderThread(host, dataPort, com.gitee.connect_screen.State.getMediaProjection());
+                FairPlayVideoEncryptor encryptor = new FairPlayVideoEncryptor(sharedSecret);
+                RtpSenderThread rtpSender = new RtpSenderThread(host, dataPort, com.gitee.connect_screen.State.getMediaProjection(), encryptor);
                 rtpSender.start();
 
                 while (isRunning) {
