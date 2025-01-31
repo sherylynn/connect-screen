@@ -164,7 +164,7 @@ public class MirrorHomeFragment extends Fragment {
 
             @Override
             public void onServiceFound(NsdServiceInfo serviceInfo) {
-                if (serviceInfo.getServiceType().contains("_airplay") && serviceInfo.getServiceName().contains("小米")) {
+                if (serviceInfo.getServiceType().contains("_airplay") && serviceInfo.getServiceName().contains("UxPlay")) {
                     Log.i(TAG, "发现服务: " + serviceInfo.getServiceName());
                     Log.i(TAG, "服务类型: " + serviceInfo.getServiceType());
                     Log.i(TAG, "服务端口: " + serviceInfo.getPort());
@@ -277,8 +277,8 @@ public class MirrorHomeFragment extends Fragment {
             "X-Apple-ProtocolVersion: 1\r\n" +
             "Content-Length: 0\r\n" +
             "CSeq: 2\r\n" +
-            "DACP-ID: 2CC18E0712799F6D\r\n" +
-            "Active-Remote: 1140620407\r\n" +
+            "DACP-ID: 68D3A0F57F146B1B\r\n" +
+            "Active-Remote: 2442483712\r\n" +
             "User-Agent: AirPlay/775.3.1\r\n\r\n";
 
         private final String host;
@@ -338,8 +338,8 @@ public class MirrorHomeFragment extends Fragment {
                     "Content-Length: 32\r\n" +
                     "Content-Type: application/octet-stream\r\n" +
                     "CSeq: 1\r\n" +
-                    "DACP-ID: 72B5A52C22E5647C\r\n" +
-                    "Active-Remote: 2558876681\r\n" +
+                    "DACP-ID: 68D3A0F57F146B1B\r\n" +
+                    "Active-Remote: 2442483712\r\n" +
                     "User-Agent: AirPlay/775.3.1\r\n\r\n";
 
                 byte[] pairSetupData = new byte[] {
@@ -376,8 +376,8 @@ public class MirrorHomeFragment extends Fragment {
                     "Content-Length: 68\r\n" +
                     "Content-Type: application/octet-stream\r\n" +
                     "CSeq: 2\r\n" +
-                    "DACP-ID: 72B5A52C22E5647C\r\n" +
-                    "Active-Remote: 2558876681\r\n" +
+                    "DACP-ID: 68D3A0F57F146B1B\r\n" +
+                    "Active-Remote: 2442483712\r\n" +
                     "User-Agent: AirPlay/775.3.1\r\n\r\n";
 
                 out.write(pairVerifyRequest.getBytes());
@@ -427,8 +427,8 @@ public class MirrorHomeFragment extends Fragment {
                     "Content-Length: 68\r\n" +
                     "Content-Type: application/octet-stream\r\n" +
                     "CSeq: 3\r\n" +
-                    "DACP-ID: 72B5A52C22E5647C\r\n" +
-                    "Active-Remote: 2558876681\r\n" +
+                    "DACP-ID: 68D3A0F57F146B1B\r\n" +
+                    "Active-Remote: 2442483712\r\n" +
                     "User-Agent: AirPlay/775.3.1\r\n\r\n";
 
                 out.write(pairVerifyRequest2.getBytes());
@@ -446,8 +446,8 @@ public class MirrorHomeFragment extends Fragment {
                     "Content-Length: 16\r\n" +
                     "Content-Type: application/octet-stream\r\n" +
                     "CSeq: 4\r\n" +
-                    "DACP-ID: 2CC18E0712799F6D\r\n" +
-                    "Active-Remote: 1140620407\r\n" +
+                    "DACP-ID: 68D3A0F57F146B1B\r\n" +
+                    "Active-Remote: 2442483712\r\n" +
                     "User-Agent: AirPlay/775.3.1\r\n\r\n";
                 
                 out.write(fpSetupRequest.getBytes());
@@ -466,8 +466,8 @@ public class MirrorHomeFragment extends Fragment {
                     "Content-Length: 164\r\n" +
                     "Content-Type: application/octet-stream\r\n" +
                     "CSeq: 5\r\n" +
-                    "DACP-ID: 2CC18E0712799F6D\r\n" +
-                    "Active-Remote: 1140620407\r\n" +
+                    "DACP-ID: 68D3A0F57F146B1B\r\n" +
+                    "Active-Remote: 2442483712\r\n" +
                     "User-Agent: AirPlay/775.3.1\r\n\r\n";
                 
                 out.write(fpSetupRequest2.getBytes());
@@ -483,8 +483,8 @@ public class MirrorHomeFragment extends Fragment {
                 NSDictionary setupDict = new NSDictionary();
                 setupDict.put("et", 32);
                 setupDict.put("statsCollectionEnabled", false);
-                setupDict.put("eiv", decodeBase64("SR3Us18zUP+dM7tX2CapMQ=="));
-                setupDict.put("sessionUUID", "09DA1A1F-AE04-4845-B404-7FBAF046D7D5");
+                setupDict.put("eiv", decodeBase64("91IdM6RTh4keicMei2GfQA=="));
+                setupDict.put("sessionUUID", "E9F7DFFF-2870-48DE-A5EA-8BADCAAB79C5");
                 setupDict.put("timingProtocol", "NTP");
                 setupDict.put("osName", "iPhone OS");
                 setupDict.put("osBuildVersion", "21G93");
@@ -492,12 +492,12 @@ public class MirrorHomeFragment extends Fragment {
                 setupDict.put("timingPort", 55606);
                 setupDict.put("isScreenMirroringSession", true);
                 setupDict.put("osVersion", "17.6.1");
-                setupDict.put("ekey", decodeBase64("RlBMWQECAQAAAAA8AAAAAJkBYx+MhWFfX7SWE1/KGIQAAAAQRk8i+JxY/UiO0KQ6YaNn9LfVDlQB04zcOPjatJZbPOMVUtTs"));
+                setupDict.put("ekey", new byte[]{70, 80, 76, 89, 1, 2, 1, 0, 0, 0, 0, 60, 0, 0, 0, 0, 63, 121, 70, -69, 3, -8, 117, -13, 83, 72, 105, -51, -11, -43, -1, 17, 0, 0, 0, 16, 24, -109, 13, 105, -32, -125, -73, -128, 21, 29, -31, 72, -41, 112, -36, -75, 57, 110, 71, -72, -25, -59, 102, 22, 19, -43, 35, 74, -20, 86, 15, 16, 126, 5, 15, -45});
                 setupDict.put("sessionCorrelationUUID", "22E39508-74C6-4BCE-8685-AB01DB111C21");
-                setupDict.put("deviceID", getMacAddress(context));  // 使用真实的 MAC 地址
+                setupDict.put("deviceID", "26:59:51:2E:80:25");  // 使用真实的 MAC 地址
                 setupDict.put("model", "iPad14,2");
                 setupDict.put("name", "舒舒平板");
-                setupDict.put("macAddress", getMacAddress(context));  // 使用真实的 MAC 地址
+                setupDict.put("macAddress", "26:59:51:2E:80:25");  // 使用真实的 MAC 地址
                 
                 // 将 plist 转换为二进制数据
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -506,12 +506,12 @@ public class MirrorHomeFragment extends Fragment {
                 
                 // 构建 SETUP 请求
                 String setupRequest = 
-                    "SETUP rtsp://" + host + "/709908614630099013 RTSP/1.0\r\n" +
+                    "SETUP rtsp://" + "10.140.1.183" + "/709908614630099013 RTSP/1.0\r\n" +
                     "Content-Length: " + plistData.length + "\r\n" +
                     "Content-Type: application/x-apple-binary-plist\r\n" +
                     "CSeq: 6\r\n" +
-                    "DACP-ID: 2CC18E0712799F6D\r\n" +
-                    "Active-Remote: 1140620407\r\n" +
+                    "DACP-ID: 68D3A0F57F146B1B\r\n" +
+                    "Active-Remote: 2442483712\r\n" +
                     "User-Agent: AirPlay/775.3.1\r\n\r\n";
                 
                 // 发送请求头和 plist 数据
@@ -525,10 +525,10 @@ public class MirrorHomeFragment extends Fragment {
                 
                 // 发送 RECORD 请求
                 String recordRequest = 
-                    "RECORD rtsp://" + host + "/709908614630099013 RTSP/1.0\r\n" +
+                    "RECORD rtsp://" + "10.140.1.183" + "/709908614630099013 RTSP/1.0\r\n" +
                     "CSeq: 7\r\n" +
-                    "DACP-ID: 2CC18E0712799F6D\r\n" +
-                    "Active-Remote: 1140620407\r\n" +
+                    "DACP-ID: 68D3A0F57F146B1B\r\n" +
+                    "Active-Remote: 2442483712\r\n" +
                     "User-Agent: AirPlay/775.3.1\r\n\r\n";
                 
                 out.write(recordRequest.getBytes());
@@ -568,12 +568,12 @@ public class MirrorHomeFragment extends Fragment {
                 
                 // 构建第二个 SETUP 请求
                 String setupRequest2 = 
-                    "SETUP rtsp://" + host + "/709908614630099013 RTSP/1.0\r\n" +
+                    "SETUP rtsp://" + "10.140.1.183" + "/709908614630099013 RTSP/1.0\r\n" +
                     "Content-Length: " + plistData2.length + "\r\n" +
                     "Content-Type: application/x-apple-binary-plist\r\n" +
                     "CSeq: 8\r\n" +
-                    "DACP-ID: 2CC18E0712799F6D\r\n" +
-                    "Active-Remote: 1140620407\r\n" +
+                    "DACP-ID: 68D3A0F57F146B1B\r\n" +
+                    "Active-Remote: 2442483712\r\n" +
                     "User-Agent: AirPlay/775.3.1\r\n\r\n";
                 
                 // 发送第二个 SETUP 请求
@@ -663,41 +663,6 @@ public class MirrorHomeFragment extends Fragment {
         // 添加 Base64 解码辅助方法
         private byte[] decodeBase64(String base64String) {
             return android.util.Base64.decode(base64String, android.util.Base64.DEFAULT);
-        }
-
-        // 添加获取 MAC 地址的方法
-        private String getMacAddress(Context context) {
-            WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
-            WifiInfo wifiInfo = wifiManager.getConnectionInfo();
-            String macAddress = wifiInfo.getMacAddress();
-            
-            // 如果获取不到或者是默认值，尝试通过网络接口获取
-            if (macAddress == null || macAddress.equals("02:00:00:00:00:00")) {
-                try {
-                    List<NetworkInterface> all = Collections.list(NetworkInterface.getNetworkInterfaces());
-                    for (NetworkInterface nif : all) {
-                        if (!nif.getName().equalsIgnoreCase("wlan0")) continue;
-
-                        byte[] macBytes = nif.getHardwareAddress();
-                        if (macBytes == null) {
-                            return "02:00:00:00:00:00";
-                        }
-
-                        StringBuilder sb = new StringBuilder();
-                        for (byte b : macBytes) {
-                            sb.append(String.format("%02X:", b));
-                        }
-
-                        if (sb.length() > 0) {
-                            sb.deleteCharAt(sb.length() - 1);
-                        }
-                        return sb.toString();
-                    }
-                } catch (Exception ex) {
-                    return "02:00:00:00:00:00";
-                }
-            }
-            return macAddress;
         }
     }
 
