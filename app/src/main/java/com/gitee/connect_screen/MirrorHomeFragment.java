@@ -15,6 +15,7 @@ import android.content.pm.PackageManager;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import net.i2p.crypto.eddsa.EdDSAEngine;
 import net.i2p.crypto.eddsa.EdDSAPublicKey;
 import net.i2p.crypto.eddsa.KeyPairGenerator;
 import androidx.annotation.NonNull;
@@ -42,11 +43,18 @@ import android.net.wifi.WifiInfo;
 import org.whispersystems.curve25519.Curve25519;
 import org.whispersystems.curve25519.Curve25519KeyPair;
 
+import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
+import java.security.MessageDigest;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.net.NetworkInterface;
 import java.lang.StringBuilder;
+
+import javax.crypto.Cipher;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 
 public class MirrorHomeFragment extends Fragment {
     private static final String TAG = "MirrorHomeFragment";
@@ -356,6 +364,37 @@ public class MirrorHomeFragment extends Fragment {
                 fragment.logOnMainThread("收到第一个 pair-verify 响应：" + response.header);
 
                 // 发送第二个 pair-verify 请求
+
+                byte[] atvPublicKey = Arrays.copyOfRange(response.body, 0, 32);
+                byte[] sharedSecret = curve25519.calculateAgreement(atvPublicKey, curve25519KeyPair.getPrivateKey());
+
+                MessageDigest sha512Digest = MessageDigest.getInstance("SHA-512");
+                sha512Digest.update("Pair-Verify-AES-Key".getBytes(StandardCharsets.UTF_8));
+                sha512Digest.update(sharedSecret);
+                byte[] sharedSecretSha512AesKey = Arrays.copyOfRange(sha512Digest.digest(), 0, 16);
+
+                sha512Digest.update("Pair-Verify-AES-IV".getBytes(StandardCharsets.UTF_8));
+                sha512Digest.update(sharedSecret);
+                byte[] sharedSecretSha512AesIV = Arrays.copyOfRange(sha512Digest.digest(), 0, 16);
+
+                Cipher aesCtr128Encrypt = Cipher.getInstance("AES/CTR/NoPadding");
+                aesCtr128Encrypt.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(sharedSecretSha512AesKey, "AES"), new IvParameterSpec(sharedSecretSha512AesIV));
+
+                aesCtr128Encrypt.update(Arrays.copyOfRange(response.body, 32, 96));
+                EdDSAEngine edDSAEngine = new EdDSAEngine();
+                edDSAEngine.initSign(keyPair.getPrivate());
+
+                byte[] dataToSign = new byte[64];
+                System.arraycopy(curve25519KeyPair.getPublicKey(), 0, dataToSign, 0, 32);
+                System.arraycopy(atvPublicKey, 0, dataToSign, 32, 32);
+                byte[] signature = aesCtr128Encrypt.update(edDSAEngine.signOneShot(dataToSign));
+
+                byte[] pairVerify2Request = new byte[68];
+                pairVerify2Request[0] = 0;
+                pairVerify2Request[1] = 0;
+                pairVerify2Request[2] = 0;
+                pairVerify2Request[3] = 0;
+                System.arraycopy(signature, 0, pairVerify2Request, 4, 64);
                 String pairVerifyRequest2 = 
                     "POST /pair-verify RTSP/1.0\r\n" +
                     "X-Apple-PD: 1\r\n" +
@@ -367,20 +406,8 @@ public class MirrorHomeFragment extends Fragment {
                     "Active-Remote: 2558876681\r\n" +
                     "User-Agent: AirPlay/775.3.1\r\n\r\n";
 
-                byte[] pairVerifyData2 = new byte[] {
-                    0x00, 0x00, 0x00, 0x00, 0x46, (byte)0xe9, (byte)0xa7, 0x3b,
-                    (byte)0xc8, 0x72, (byte)0xfc, 0x21, 0x15, 0x69, 0x5b, 0x1f,
-                    (byte)0xce, 0x3d, (byte)0xcd, (byte)0x9c, (byte)0xfd, 0x42, 0x7d, 0x73,
-                    0x72, 0x31, (byte)0x95, (byte)0xb6, 0x5b, 0x64, (byte)0x9b, (byte)0xed,
-                    0x63, (byte)0xec, (byte)0xaf, 0x2e, 0x67, (byte)0xcd, (byte)0xe9, 0x67,
-                    (byte)0xc4, 0x4f, (byte)0x9d, 0x51, (byte)0x88, (byte)0xf3, (byte)0xe0, (byte)0x86,
-                    0x56, (byte)0xed, (byte)0xaf, (byte)0xba, 0x39, 0x4f, 0x54, (byte)0x86,
-                    0x39, 0x42, 0x66, 0x2d, 0x7e, (byte)0xef, (byte)0xfc, 0x44,
-                    (byte)0xef, (byte)0xf1, (byte)0xcb, 0x38
-                };
-
                 out.write(pairVerifyRequest2.getBytes());
-                out.write(pairVerifyData2);
+                out.write(pairVerify2Request);
                 out.flush();
 
                 // 读取第二个 pair-verify 响应
