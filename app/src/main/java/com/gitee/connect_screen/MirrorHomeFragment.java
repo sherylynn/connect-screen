@@ -118,6 +118,10 @@ public class MirrorHomeFragment extends Fragment {
             }
         });
 
+        // 先启动 NTP 服务器
+        ntpServer = new NtpServer(NTP_PORT);
+        ntpServer.start();
+
         return view;
     }
 
@@ -185,10 +189,6 @@ public class MirrorHomeFragment extends Fragment {
                             Log.i(TAG, "设备名称: " + deviceName);
                             Log.i(TAG, "设备地址: " + host);
                             Log.i(TAG, "设备端口: " + port);
-                            
-                            // 先启动 NTP 服务器
-                            ntpServer = new NtpServer(NTP_PORT);
-                            ntpServer.start();
                             
                             // 然后启动 RTSP 连接线程
                             new RtspConnectionThread(host, port, requireContext(), MirrorHomeFragment.this).start();
