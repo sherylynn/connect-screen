@@ -3,7 +3,6 @@ package com.gitee.connect_screen;
 import android.util.Log;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetAddress;
 
 public class NtpServer extends Thread {
     private static final String TAG = "NtpServer";
@@ -69,51 +68,17 @@ public class NtpServer extends Thread {
         response[3] = (byte) 0xFA; // ~15ms
         
         // 获取当前NTP时间戳
-        long ntpTime = getCurrentNtpTime();
+        long ntpTime = TimestampUtils.getCurrentNtpTime(true);
         
-        // 设置Reference Timestamp (T1)
-        writeTimeStamp(response, 16, ntpTime);
+        // 设置Originate Timestamp (T0) - 从请求包中复制
+        System.arraycopy(request, 24, response, 8, 8);
         
-        // 设置Originate Timestamp (T2) - 从请求包中复制
-        System.arraycopy(request, 24, response, 24, 8);
-        
-        // 设置Receive Timestamp (T3)
-        writeTimeStamp(response, 32, ntpTime);
-        
-        // 设置Transmit Timestamp (T4)
-        writeTimeStamp(response, 40, ntpTime);
+        TimestampUtils.putBigEndian(response, 16, ntpTime);
+
+        TimestampUtils.putBigEndian(response, 24, ntpTime);
         
         Log.i(TAG, "NTP响应已生成，时间戳: " + ntpTime);
         return response;
-    }
-    
-    // 辅助方法：将时间戳写入字节数组
-    private void writeTimeStamp(byte[] array, int offset, long timestamp) {
-        // 处理秒数部分
-        long seconds = timestamp >> 32;
-        array[offset] = (byte) ((seconds >> 24) & 0xFF);
-        array[offset + 1] = (byte) ((seconds >> 16) & 0xFF);
-        array[offset + 2] = (byte) ((seconds >> 8) & 0xFF);
-        array[offset + 3] = (byte) (seconds & 0xFF);
-        
-        // 处理小数部分
-        long fraction = timestamp & 0xFFFFFFFFL;
-        array[offset + 4] = (byte) ((fraction >> 24) & 0xFF);
-        array[offset + 5] = (byte) ((fraction >> 16) & 0xFF);
-        array[offset + 6] = (byte) ((fraction >> 8) & 0xFF);
-        array[offset + 7] = (byte) (fraction & 0xFF);
-    }
-
-    private long getCurrentNtpTime() {
-        // 获取当前系统时间（纳秒级）
-        long nanoTime = System.nanoTime();
-        long milliTime = System.currentTimeMillis();
-        
-        // 计算完整的 NTP 时间戳
-        long seconds = milliTime / 1000L + 2208988800L;
-        long fraction = ((nanoTime % 1000000000L) << 32) / 1000000000L;
-        
-        return (seconds << 32) | fraction;
     }
 
     public void stopServer() {

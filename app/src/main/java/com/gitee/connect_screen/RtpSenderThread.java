@@ -258,8 +258,8 @@ public class RtpSenderThread extends Thread {
         packet[offset++] = 0x01;
 
         // 设置NTP时间戳
-        firstPacketTimestamp = System.currentTimeMillis();
-        TimestampUtils.putNtpTimestamp(packet, 8, firstPacketTimestamp);
+        firstPacketTimestamp = TimestampUtils.getCurrentNtpTime(false);
+        TimestampUtils.putLittleEndian(packet, 8, firstPacketTimestamp);
         offset += 8;
 
         
@@ -418,11 +418,11 @@ public class RtpSenderThread extends Thread {
         packet[7] = 0x00;
 
         // 设置NTP时间戳
-        long currentTime = System.currentTimeMillis();
+        long currentTime = TimestampUtils.getCurrentNtpTime(false);
         if (packetCount == 1) {
             currentTime = firstPacketTimestamp;
         }
-        TimestampUtils.putNtpTimestamp(packet, 8, currentTime);
+        TimestampUtils.putLittleEndian(packet, 8, currentTime);
 
         // 将NAL单元复制到数据包中，每个NAL单元前加上4字节的大小前缀
         currentOffset = 0;
