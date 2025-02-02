@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Paint;
 import android.net.Uri;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -24,9 +25,18 @@ import com.gitee.connect_screen.job.ExitAll;
 import com.gitee.connect_screen.job.ListenOpenglAndPostFrame;
 import com.gitee.connect_screen.shizuku.ShizukuUtils;
 
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
+import javax.jmdns.JmDNS;
+import javax.jmdns.ServiceInfo;
+import java.io.IOException;
 
 public class MirrorHomeFragment extends Fragment {
+    private JmDNS jmdns;
+    private ServiceInfo serviceInfo;
     
     @Nullable
     @Override
@@ -51,5 +61,65 @@ public class MirrorHomeFragment extends Fragment {
         });
 
         return view;
+    }
+
+    @Override
+    public void onAttach(Context context) {
+        super.onAttach(context);
+        initializeNsdService();
+    }
+    
+    private void initializeNsdService() {
+        try {
+            InetAddress addr = getWifiIpAddress(getContext());
+            if (addr == null) {
+                Toast.makeText(requireContext(), "无法获取WiFi IP地址", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            jmdns = JmDNS.create(addr);
+            serviceInfo = ServiceInfo.create(
+                "_nvstream._tcp.local.",  // 服务类型
+                "MirrorScreen",           // 服务名称
+                8000,                     // 端口
+                "ConnectScreen"              // 服务描述
+            );
+            
+            jmdns.registerService(serviceInfo);
+            Toast.makeText(requireContext(), "MDNS服务注册成功", Toast.LENGTH_SHORT).show();
+        } catch (IOException e) {
+            Toast.makeText(requireContext(), "MDNS服务注册失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        if (jmdns != null) {
+            try {
+                jmdns.unregisterService(serviceInfo);
+                jmdns.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        super.onDestroy();
+    }
+
+    public static InetAddress getWifiIpAddress(Context context) throws UnknownHostException {
+        WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        if (wifiManager == null || !wifiManager.isWifiEnabled()) {
+            return null;
+        }
+
+        int ipAddress = wifiManager.getConnectionInfo().getIpAddress();
+        // Convert little-endian to big-endian if needed
+        byte[] bytes = new byte[4];
+        bytes[0] = (byte) (ipAddress & 0xFF);
+        bytes[1] = (byte) ((ipAddress >> 8) & 0xFF);
+        bytes[2] = (byte) ((ipAddress >> 16) & 0xFF);
+        bytes[3] = (byte) ((ipAddress >> 24) & 0xFF);
+
+        return InetAddress.getByAddress(bytes);
     }
 }
