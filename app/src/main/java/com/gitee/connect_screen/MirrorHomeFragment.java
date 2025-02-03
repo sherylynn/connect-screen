@@ -12,7 +12,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 import android.app.AlertDialog;
 
 import androidx.annotation.NonNull;
@@ -37,6 +36,7 @@ import java.io.IOException;
 public class MirrorHomeFragment extends Fragment {
     private JmDNS jmdns;
     private ServiceInfo serviceInfo;
+    private NvHTTP nvHttp;
     
     @Nullable
     @Override
@@ -66,35 +66,50 @@ public class MirrorHomeFragment extends Fragment {
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
-        initializeNsdService();
+        initializeNsdService(context);
     }
-    
-    private void initializeNsdService() {
-        try {
-            InetAddress addr = getWifiIpAddress(getContext());
-            if (addr == null) {
-                Toast.makeText(requireContext(), "无法获取WiFi IP地址", Toast.LENGTH_SHORT).show();
-                return;
-            }
 
-            jmdns = JmDNS.create(addr);
-            serviceInfo = ServiceInfo.create(
-                "_nvstream._tcp.local.",  // 服务类型
-                "MirrorScreen",           // 服务名称
-                8000,                     // 端口
-                "ConnectScreen"              // 服务描述
-            );
-            
-            jmdns.registerService(serviceInfo);
-            Toast.makeText(requireContext(), "MDNS服务注册成功", Toast.LENGTH_SHORT).show();
-        } catch (IOException e) {
-            Toast.makeText(requireContext(), "MDNS服务注册失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-            e.printStackTrace();
-        }
+    private void initializeNsdService(Context context) {
+        new Thread(() -> {
+            try {
+                InetAddress addr = getWifiIpAddress(context);
+                if (addr == null) {
+                    android.util.Log.e("MirrorHomeFragment", "无法获取WiFi IP地址");
+                    return;
+                }
+                android.util.Log.i("MirrorHomeFragment", "获取到WiFi IP地址: " + addr.getHostAddress());
+
+                // 启动 HTTP 服务器
+                nvHttp = new NvHTTP(addr);
+                try {
+                    nvHttp.start();
+                    android.util.Log.i("MirrorHomeFragment", "NvHTTP服务器启动成功，端口: " + NvHTTP.HTTP_PORT);
+                } catch (IOException e) {
+                    android.util.Log.e("MirrorHomeFragment", "NvHTTP服务器启动失败", e);
+                    return;
+                }
+
+                jmdns = JmDNS.create(addr);
+                serviceInfo = ServiceInfo.create(
+                    "_nvstream._tcp.local.",
+                    "MirrorScreen",
+                    NvHTTP.HTTP_PORT,
+                    "ConnectScreen"
+                );
+                
+                jmdns.registerService(serviceInfo);
+                android.util.Log.i("MirrorHomeFragment", "JmDNS服务注册成功");
+            } catch (IOException e) {
+                android.util.Log.e("MirrorHomeFragment", "初始化网络服务失败", e);
+            }
+        }).start();
     }
 
     @Override
     public void onDestroy() {
+        if (nvHttp != null) {
+            nvHttp.stop();
+        }
         if (jmdns != null) {
             try {
                 jmdns.unregisterService(serviceInfo);
