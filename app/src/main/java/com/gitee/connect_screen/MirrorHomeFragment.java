@@ -38,7 +38,8 @@ public class MirrorHomeFragment extends Fragment {
     private JmDNS jmdns;
     private ServiceInfo serviceInfo;
     private NvHTTP nvHttp;
-    
+    private NvHTTPS nvHttps;
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -94,9 +95,12 @@ public class MirrorHomeFragment extends Fragment {
                 android.util.Log.i("MirrorHomeFragment", "获取到WiFi IP地址: " + addr.getHostAddress());
 
                 // 启动 HTTP 服务器
+                NvHTTP.ADDRESS = addr;
                 nvHttp = new NvHTTP(addr);
+                nvHttps = new NvHTTPS();
                 try {
                     nvHttp.start();
+                    nvHttps.start();
                     android.util.Log.i("MirrorHomeFragment", "NvHTTP服务器启动成功，端口: " + NvHTTP.HTTP_PORT);
                 } catch (IOException e) {
                     android.util.Log.e("MirrorHomeFragment", "NvHTTP服务器启动失败", e);

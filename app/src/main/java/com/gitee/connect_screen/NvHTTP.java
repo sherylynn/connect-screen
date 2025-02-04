@@ -35,7 +35,8 @@ import java.util.Map;
 public class NvHTTP extends NanoHTTPD {
     public static byte[] CA_CERT;
     public static byte[] CA_KEY;
-    private final InetAddress addr;
+    public static InetAddress ADDRESS;
+    public static final int HTTPS_PORT = 47984;
     public static final int HTTP_PORT = 47989;
     private final Sha256PairingHash hashAlgo;
     private byte[] cipherKey;
@@ -46,38 +47,14 @@ public class NvHTTP extends NanoHTTPD {
 
     public NvHTTP(InetAddress addr) {
         super(HTTP_PORT);
-        this.addr = addr;
         hashAlgo = new Sha256PairingHash();
     }
 
     @Override
     public Response serve(IHTTPSession session) {
         if (session.getUri().equals("/serverinfo")) {
-            String response = String.format(
-                "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
-                "<root status_code=\"200\">\n" +
-                "<hostname>android-device</hostname>\n" +
-                "<appversion>7.1.431.-1</appversion>\n" +
-                "<GfeVersion>3.23.0.74</GfeVersion>\n" +
-                "<uniqueid>DBD31B2E-EA1C-872C-5D8F-87DF1AD4C341</uniqueid>\n" +
-                "<HttpsPort>47984</HttpsPort>\n" +
-                "<ExternalPort>%d</ExternalPort>\n" +
-                "<MaxLumaPixelsHEVC>1869449984</MaxLumaPixelsHEVC>\n" +
-                "<mac>00:00:00:00:00:00</mac>\n" +
-                "<LocalIP>%s</LocalIP>\n" +
-                "<ServerCodecModeSupport>197377</ServerCodecModeSupport>\n" +
-                "<PairStatus>0</PairStatus>\n" +
-                "<currentgame>0</currentgame>\n" +
-                "<state>SUNSHINE_SERVER_FREE</state>\n" +
-                "</root>",
-                HTTP_PORT,
-                addr.getHostAddress()
-            );
-            
-            return newFixedLengthResponse(Response.Status.OK, "application/xml", response);
-        }
-        
-        if (session.getUri().equals("/pair")) {
+            return handleServerInfo(false);
+        } else if (session.getUri().equals("/pair")) {
             // 获取请求参数
             Map<String, String> params = session.getParms();
             String phrase = params.get("phrase");
@@ -165,6 +142,32 @@ public class NvHTTP extends NanoHTTPD {
             return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Invalid pairing phrase");
         }
         return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Not Found");
+    }
+
+    public static @NonNull Response handleServerInfo(boolean paired) {
+        String response = String.format(
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+            "<root status_code=\"200\">\n" +
+            "<hostname>android-device</hostname>\n" +
+            "<appversion>7.1.431.-1</appversion>\n" +
+            "<GfeVersion>3.23.0.74</GfeVersion>\n" +
+            "<uniqueid>DBD31B2E-EA1C-872C-5D8F-87DF1AD4C341</uniqueid>\n" +
+            "<HttpsPort>%d</HttpsPort>\n" +
+            "<ExternalPort>%d</ExternalPort>\n" +
+            "<MaxLumaPixelsHEVC>1869449984</MaxLumaPixelsHEVC>\n" +
+            "<mac>00:00:00:00:00:00</mac>\n" +
+            "<LocalIP>%s</LocalIP>\n" +
+            "<ServerCodecModeSupport>197377</ServerCodecModeSupport>\n" +
+            "<PairStatus>%d</PairStatus>\n" +
+            "<currentgame>0</currentgame>\n" +
+            "<state>SUNSHINE_SERVER_FREE</state>\n" +
+            "</root>",
+            HTTPS_PORT,
+            HTTP_PORT,
+            ADDRESS.getHostAddress(), paired ? 1 : 0
+        );
+
+        return newFixedLengthResponse(Response.Status.OK, "application/xml", response);
     }
 
     private @NonNull Response failPair(String errorMsg) {
