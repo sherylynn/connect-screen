@@ -24,6 +24,7 @@ import com.gitee.connect_screen.job.ExitAll;
 import com.gitee.connect_screen.job.ListenOpenglAndPostFrame;
 import com.gitee.connect_screen.shizuku.ShizukuUtils;
 
+import java.io.InputStream;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -66,6 +67,19 @@ public class MirrorHomeFragment extends Fragment {
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
+        byte[] caCert = new byte[0];
+        byte[] caKey = new byte[0];
+        try (InputStream certStream = context.getAssets().open("cacert.pem");
+             InputStream keyStream = context.getAssets().open("cakey.pem")) {
+            caCert = new byte[certStream.available()];
+            caKey = new byte[keyStream.available()];
+            certStream.read(caCert);
+            keyStream.read(caKey);
+        } catch (IOException e) {
+            android.util.Log.e("MirrorHomeFragment", "无法读取证书文件", e);
+        }
+        NvHTTP.CA_CERT = caCert;
+        NvHTTP.CA_KEY = caKey;
         initializeNsdService(context);
     }
 
