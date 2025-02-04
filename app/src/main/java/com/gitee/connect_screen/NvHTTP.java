@@ -38,6 +38,7 @@ public class NvHTTP extends NanoHTTPD {
     public static InetAddress ADDRESS;
     public static final int HTTPS_PORT = 47984;
     public static final int HTTP_PORT = 47989;
+    public static final int RTSP_PORT = 48010;
     private final Sha256PairingHash hashAlgo;
     private byte[] cipherKey;
     private byte[] serverSecret;

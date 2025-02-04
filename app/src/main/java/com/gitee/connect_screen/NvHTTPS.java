@@ -18,6 +18,8 @@ import java.security.PrivateKey;
 import java.security.cert.CertificateFactory;
 import java.io.ByteArrayInputStream;
 import java.io.InputStreamReader;
+import java.util.Map;
+
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
@@ -101,6 +103,28 @@ public class NvHTTPS extends NanoHTTPD {
                     "<root status_code=\"200\">\n" +
                     "<paired>1</paired>\n" +
                     "</root>");
+        } else if (session.getUri().equals("/applist")) {
+            return newFixedLengthResponse(Response.Status.OK, MIME_PLAINTEXT,
+                    "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                            "<root status_code=\"200\">" +
+                            "<App><IsHdrSupported>1</IsHdrSupported><AppTitle>Desktop</AppTitle><ID>881448767</ID></App>" +
+                            "</root>");
+        } else if (session.getUri().equals("/launch")) {
+            Map<String, String> params = session.getParms();
+            String corever = params.get("corever");
+            if (corever == null) {
+                corever = "0";
+            }
+            String protocol = "rtsp";
+            if (Integer.parseInt(corever) >= 1) {
+                protocol = "rtspenc";
+            }
+            return newFixedLengthResponse(Response.Status.OK, MIME_PLAINTEXT,
+                    String.format("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                            "<root status_code=\"200\">" +
+                            "<sessionUrl0>%s://%s:%d</sessionUrl0>" +
+                            "<gamesession>1</gamesession>" +
+                            "</root>", protocol, NvHTTP.ADDRESS.getHostAddress(), NvHTTP.RTSP_PORT));
         }
         return newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "Not Found");
     }
