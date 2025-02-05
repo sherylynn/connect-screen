@@ -110,15 +110,15 @@ public class NvHTTPS extends NanoHTTPD {
                             "<App><IsHdrSupported>1</IsHdrSupported><AppTitle>Desktop</AppTitle><ID>881448767</ID></App>" +
                             "</root>");
         } else if (session.getUri().equals("/launch")) {
-            Map<String, String> params = session.getParms();
-            String corever = params.get("corever");
-            if (corever == null) {
-                corever = "0";
-            }
+//            Map<String, String> params = session.getParms();
+//            String corever = params.get("corever");
+//            if (corever == null) {
+//                corever = "0";
+//            }
             String protocol = "rtsp";
-            if (Integer.parseInt(corever) >= 1) {
-                protocol = "rtspenc";
-            }
+//            if (Integer.parseInt(corever) >= 1) {
+//                protocol = "rtspenc";
+//            }
             return newFixedLengthResponse(Response.Status.OK, MIME_PLAINTEXT,
                     String.format("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
                             "<root status_code=\"200\">" +
