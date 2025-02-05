@@ -153,16 +153,17 @@ public class RTSPServer extends Thread {
                 
                 // 根据不同方法处理请求
                 switch (method) {
-                    case "OPTIONS":
-                        break;
-                        
                     case "DESCRIBE":
-                        response.append(CRLF);
                         response.append("a=x-ss-general.featureFlags:3").append(CRLF);
                         response.append("a=x-ss-general.encryptionSupported:5").append(CRLF);
                         response.append("a=x-ss-general.encryptionRequested:1").append(CRLF);
                         response.append("sprop-parameter-sets=AAAAAU").append(CRLF);
-                        // ... 添加其他SDP信息 ...
+                        response.append("a=rtpmap:98 AV1/90000").append(CRLF);
+                        response.append("a=fmtp:97 surround-params=21101").append(CRLF);
+                        response.append("a=fmtp:97 surround-params=642012453").append(CRLF);
+                        response.append("a=fmtp:97 surround-params=660012345").append(CRLF);
+                        response.append("a=fmtp:97 surround-params=85301245367").append(CRLF);
+                        response.append("a=fmtp:97 surround-params=88001234567").append(CRLF);
                         break;
                         
                     case "SETUP":
@@ -170,19 +171,13 @@ public class RTSPServer extends Thread {
                         response.append("Session: ").append(session).append(";timeout = 90").append(CRLF);
                         if (uri.contains("audio")) {
                             response.append("Transport: server_port=48000").append(CRLF);
+                            response.append("X-SS-Ping-Payload: A4AACADDA6340FB4").append(CRLF);
                         } else if (uri.contains("video")) {
                             response.append("Transport: server_port=47998").append(CRLF);
+                            response.append("X-SS-Ping-Payload: A4AACADDA6340FB4").append(CRLF);
                         } else if (uri.contains("control")) {
                             response.append("Transport: server_port=47999").append(CRLF);
                             response.append("X-SS-Connect-Data: 2207506894").append(CRLF);
-                        }
-                        response.append("X-SS-Ping-Payload: A4AACADDA6340FB4").append(CRLF);
-                        break;
-                        
-                    case "ANNOUNCE":
-                    case "PLAY":
-                        if (session != null) {
-                            response.append(CRLF).append("w").append(CRLF);
                         }
                         break;
                 }
@@ -191,7 +186,7 @@ public class RTSPServer extends Thread {
                 String finalResponse = response.toString();
                 Log.d(TAG, "发送 RTSP 响应:\n" + finalResponse);
                 try {
-                    writer.write((finalResponse + CRLF).getBytes());
+                    writer.write((finalResponse + CRLF + CRLF).getBytes());
                     writer.flush();
                     Log.d(TAG, "RTSP 响应已发送完成");
                 } catch (IOException e) {

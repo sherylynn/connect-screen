@@ -39,6 +39,9 @@ public class NvHTTP extends NanoHTTPD {
     public static final int HTTPS_PORT = 47984;
     public static final int HTTP_PORT = 47989;
     public static final int RTSP_PORT = 48010;
+    public static final int CONTROL_PORT = 47999;
+    public static final int VIDEO_PORT = 47998;
+    public static final int AUDIO_PORT = 48000;
     private final Sha256PairingHash hashAlgo;
     private byte[] cipherKey;
     private byte[] serverSecret;
