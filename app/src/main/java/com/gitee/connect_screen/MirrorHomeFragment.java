@@ -1,6 +1,7 @@
 package com.gitee.connect_screen;
 
 import android.content.Context;
+import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionConfig;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -44,6 +45,7 @@ import android.net.wifi.WifiInfo;
 import org.whispersystems.curve25519.Curve25519;
 import org.whispersystems.curve25519.Curve25519KeyPair;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.MessageDigest;
@@ -57,6 +59,15 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
+import android.media.AudioFormat;
+import android.media.AudioRecord;
+import android.media.MediaCodec;
+import android.media.MediaCodecInfo;
+import android.media.MediaFormat;
+import android.media.MediaRecorder;
+import android.media.AudioAttributes;
+import android.media.AudioPlaybackCaptureConfiguration;
+
 public class MirrorHomeFragment extends Fragment {
     private static final String TAG = "MirrorHomeFragment";
     private static final int NTP_PORT = 55606;
@@ -64,12 +75,19 @@ public class MirrorHomeFragment extends Fragment {
     private NsdManager.DiscoveryListener discoveryListener;
     private static final String SERVICE_TYPE = "_airplay._tcp.";
     private static final int PERMISSION_REQUEST_CODE = 123;
+    private static final int PERMISSION_REQUEST_CODE_AUDIO = 124;
+    private static final int SAMPLE_RATE = 44100;
+    private static final int CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_STEREO;
+    private static final int AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT;
     private static final String RTSP_OPTIONS_REQUEST =
         "OPTIONS * RTSP/1.0\r\n" +
         "CSeq: 1\r\n" +
         "User-Agent: AirPlay/1.0\r\n\r\n";
     
     private NtpServer ntpServer;
+    private AudioRecord audioRecord;
+    private MediaCodec audioEncoder;
+    private boolean isRecording = false;
     
     @Nullable
     @Override
@@ -97,24 +115,27 @@ public class MirrorHomeFragment extends Fragment {
 
         nsdSearchBtn.setOnClickListener(v -> {
             if (checkAndRequestPermissions()) {
+                initAudioRecording();
                 startNsdDiscovery();
             }
         });
 
         projectBtn.setOnClickListener(v -> {
-            MediaProjectionManager mediaProjectionManager = 
-                (MediaProjectionManager) requireContext().getSystemService(Context.MEDIA_PROJECTION_SERVICE);
-            if (mediaProjectionManager != null) {
-                Intent captureIntent;
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                    captureIntent = mediaProjectionManager.createScreenCaptureIntent(
-                        MediaProjectionConfig.createConfigForDefaultDisplay());
+            if (checkAndRequestAudioPermissions()) {
+                MediaProjectionManager mediaProjectionManager = 
+                    (MediaProjectionManager) requireContext().getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+                if (mediaProjectionManager != null) {
+                    Intent captureIntent;
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        captureIntent = mediaProjectionManager.createScreenCaptureIntent(
+                            MediaProjectionConfig.createConfigForDefaultDisplay());
+                    } else {
+                        captureIntent = mediaProjectionManager.createScreenCaptureIntent();
+                    }
+                    requireActivity().startActivityForResult(captureIntent, MainActivity.REQUEST_CODE_MEDIA_PROJECTION);
                 } else {
-                    captureIntent = mediaProjectionManager.createScreenCaptureIntent();
+                    Toast.makeText(requireContext(), "无法获取 MediaProjectionManager 服务", Toast.LENGTH_SHORT).show();
                 }
-                requireActivity().startActivityForResult(captureIntent, MainActivity.REQUEST_CODE_MEDIA_PROJECTION);
-            } else {
-                Toast.makeText(requireContext(), "无法获取 MediaProjectionManager 服务", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -134,6 +155,17 @@ public class MirrorHomeFragment extends Fragment {
                         PERMISSION_REQUEST_CODE);
                 return false;
             }
+        }
+        return true;
+    }
+
+    private boolean checkAndRequestAudioPermissions() {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(requireActivity(),
+                    new String[]{Manifest.permission.RECORD_AUDIO},
+                    PERMISSION_REQUEST_CODE_AUDIO);
+            return false;
         }
         return true;
     }
@@ -206,6 +238,122 @@ public class MirrorHomeFragment extends Fragment {
         nsdManager.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, discoveryListener);
     }
 
+    private void initAudioRecording() {
+        try {
+            // 检查系统版本
+            if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) {
+                Toast.makeText(requireContext(), "系统版本过低，需要 Android 10 及以上版本", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            MediaProjection mediaProjection = State.getMediaProjection();
+            if (mediaProjection == null) {
+                Toast.makeText(requireContext(), "未获取到媒体投影权限", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // 配置音频捕获
+            AudioPlaybackCaptureConfiguration config = new AudioPlaybackCaptureConfiguration.Builder(mediaProjection)
+                    .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+                    .addMatchingUsage(AudioAttributes.USAGE_GAME)
+                    .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
+                    .build();
+
+            int minBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT);
+            if (minBufferSize == AudioRecord.ERROR || minBufferSize == AudioRecord.ERROR_BAD_VALUE) {
+                Toast.makeText(requireContext(), "不支持的音频配置", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            audioRecord = new AudioRecord.Builder()
+                    .setAudioFormat(new AudioFormat.Builder()
+                            .setEncoding(AUDIO_FORMAT)
+                            .setSampleRate(SAMPLE_RATE)
+                            .setChannelMask(CHANNEL_CONFIG)
+                            .build())
+                    .setBufferSizeInBytes(minBufferSize)
+                    .setAudioPlaybackCaptureConfig(config)  // 设置音频捕获配置
+                    .build();
+
+            // 配置 AAC 编码器
+            MediaFormat format = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, SAMPLE_RATE, 2);
+            format.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectELD);
+            format.setInteger(MediaFormat.KEY_BIT_RATE, 128000);
+            format.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 16384);
+
+            audioEncoder = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC);
+            audioEncoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+            
+            // 开始录音和编码
+            audioRecord.startRecording();
+            audioEncoder.start();
+            isRecording = true;
+
+            // 启动音频处理线程
+            new Thread(this::processAudio).start();
+
+        } catch (Exception e) {
+            Log.e(TAG, "初始化音频录制失败: " + e.getMessage());
+            e.printStackTrace();
+            Toast.makeText(requireContext(), "初始化音频录制失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void processAudio() {
+        byte[] buffer = new byte[4096];
+        MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+        long frameCount = 0;
+        
+        Log.i(TAG, "开始音频处理循环");
+        
+        while (isRecording) {
+            try {
+                // 读取音频数据
+                int bytesRead = audioRecord.read(buffer, 0, buffer.length);
+                if (bytesRead > 0) {
+                    Log.d(TAG, String.format("读取到音频数据: %d 字节", bytesRead));
+                    
+                    // 获取编码器输入缓冲区
+                    int inputBufferIndex = audioEncoder.dequeueInputBuffer(-1);
+                    if (inputBufferIndex >= 0) {
+                        ByteBuffer inputBuffer = audioEncoder.getInputBuffer(inputBufferIndex);
+                        inputBuffer.clear();
+                        inputBuffer.put(buffer, 0, bytesRead);
+                        long presentationTimeUs = System.nanoTime() / 1000;
+                        audioEncoder.queueInputBuffer(inputBufferIndex, 0, bytesRead, 
+                                presentationTimeUs, 0);
+                        Log.d(TAG, String.format("已将音频数据写入编码器输入缓冲区 #%d, PTS: %d µs", 
+                                inputBufferIndex, presentationTimeUs));
+                    }
+
+                    // 获取编码后的数据
+                    int outputBufferIndex = audioEncoder.dequeueOutputBuffer(bufferInfo, 0);
+                    while (outputBufferIndex >= 0) {
+                        ByteBuffer outputBuffer = audioEncoder.getOutputBuffer(outputBufferIndex);
+                        frameCount++;
+                        
+                        if (outputBuffer != null) {
+                            Log.d(TAG, String.format("获取到编码后的AAC数据: 大小=%d 字节, 偏移=%d, " +
+                                    "PTS=%d µs, 标志=%d, 帧计数=%d", 
+                                    bufferInfo.size, bufferInfo.offset, 
+                                    bufferInfo.presentationTimeUs, bufferInfo.flags, frameCount));
+                        }
+                        
+                        audioEncoder.releaseOutputBuffer(outputBufferIndex, false);
+                        outputBufferIndex = audioEncoder.dequeueOutputBuffer(bufferInfo, 0);
+                    }
+                } else {
+                    Log.w(TAG, String.format("音频读取返回: %d", bytesRead));
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "处理音频数据时出错: " + e.getMessage(), e);
+                break;
+            }
+        }
+        
+        Log.i(TAG, String.format("音频处理循环结束，共处理 %d 帧", frameCount));
+    }
+
     @Override
     public void onDestroy() {
         super.onDestroy();
@@ -219,6 +367,16 @@ public class MirrorHomeFragment extends Fragment {
             } catch (IllegalArgumentException e) {
                 // 忽略已停止的搜索
             }
+        }
+        // 停止音频录制
+        isRecording = false;
+        if (audioRecord != null) {
+            audioRecord.stop();
+            audioRecord.release();
+        }
+        if (audioEncoder != null) {
+            audioEncoder.stop();
+            audioEncoder.release();
         }
     }
 
@@ -332,214 +490,6 @@ public class MirrorHomeFragment extends Fragment {
                     fragment.logOnMainThread("解析 plist 失败：" + e.getMessage());
                 }
 
-                /* 
-                // 发送 pair-setup 请求
-                String pairSetupRequest = 
-                    "POST /pair-setup RTSP/1.0\r\n" +
-                    "Content-Length: 32\r\n" +
-                    "Content-Type: application/octet-stream\r\n" +
-                    "CSeq: 1\r\n" +
-                    "DACP-ID: 68D3A0F57F146B1B\r\n" +
-                    "Active-Remote: 2442483712\r\n" +
-                    "User-Agent: AirPlay/775.3.1\r\n\r\n";
-
-                byte[] pairSetupData = new byte[] {
-                        (byte)0xb7, 0x75, (byte)0xc9, 0x79, 0x75, 0x5a, 0x71, (byte)0xd3,
-                        0x09, (byte)0x81, (byte)0xdc, (byte)0xd4, 0x57, (byte)0xa9, 0x3c, (byte)0x92,
-                        0x5f, 0x0a, 0x26, 0x03, 0x58, (byte)0x87, (byte)0xf8, 0x3b,
-                        (byte)0xea, 0x38, 0x76, 0x09, 0x38, (byte)0xd3, (byte)0xf4, (byte)0xdf,
-                };
-
-                out.write(pairSetupRequest.getBytes());
-                out.write(pairSetupData);
-                out.flush();
-
-                // 读取 pair-setup 响应
-                response = readResponse(in);
-                fragment.logOnMainThread("收到 pair-setup 响应：" + response.header);
-
-                // 添加 pair-verify 请求
-                KeyPair keyPair = new KeyPairGenerator().generateKeyPair();
-                Curve25519 curve25519 = Curve25519.getInstance(Curve25519.BEST);
-                Curve25519KeyPair curve25519KeyPair = curve25519.generateKeyPair();
-                byte[] pairVerify1Request = new byte[68];
-                pairVerify1Request[0] = 1;
-                pairVerify1Request[1] = 0;
-                pairVerify1Request[2] = 0;
-                pairVerify1Request[3] = 0;
-                System.arraycopy(curve25519KeyPair.getPublicKey(), 0, pairVerify1Request, 4, 32);
-                System.arraycopy(((EdDSAPublicKey) keyPair.getPublic()).getAbyte(), 0, pairVerify1Request, 36, 32);
-
-                String pairVerifyRequest = 
-                    "POST /pair-verify RTSP/1.0\r\n" +
-                    "X-Apple-PD: 1\r\n" +
-                    "X-Apple-AbsoluteTime: 759932340\r\n" +
-                    "Content-Length: 68\r\n" +
-                    "Content-Type: application/octet-stream\r\n" +
-                    "CSeq: 2\r\n" +
-                    "DACP-ID: 68D3A0F57F146B1B\r\n" +
-                    "Active-Remote: 2442483712\r\n" +
-                    "User-Agent: AirPlay/775.3.1\r\n\r\n";
-
-                out.write(pairVerifyRequest.getBytes());
-                out.write(pairVerify1Request);
-                out.flush();
-
-                // 读取 pair-verify 响应
-                response = readResponse(in);
-                fragment.logOnMainThread("收到第一个 pair-verify 响应：" + response.header);
-
-                // 发送第二个 pair-verify 请求
-
-                byte[] atvPublicKey = Arrays.copyOfRange(response.body, 0, 32);
-                byte[] sharedSecret = curve25519.calculateAgreement(atvPublicKey, curve25519KeyPair.getPrivateKey());
-
-                MessageDigest sha512Digest = MessageDigest.getInstance("SHA-512");
-                sha512Digest.update("Pair-Verify-AES-Key".getBytes(StandardCharsets.UTF_8));
-                sha512Digest.update(sharedSecret);
-                byte[] sharedSecretSha512AesKey = Arrays.copyOfRange(sha512Digest.digest(), 0, 16);
-
-                sha512Digest.update("Pair-Verify-AES-IV".getBytes(StandardCharsets.UTF_8));
-                sha512Digest.update(sharedSecret);
-                byte[] sharedSecretSha512AesIV = Arrays.copyOfRange(sha512Digest.digest(), 0, 16);
-
-                Cipher aesCtr128Encrypt = Cipher.getInstance("AES/CTR/NoPadding");
-                aesCtr128Encrypt.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(sharedSecretSha512AesKey, "AES"), new IvParameterSpec(sharedSecretSha512AesIV));
-
-                aesCtr128Encrypt.update(Arrays.copyOfRange(response.body, 32, 96));
-                EdDSAEngine edDSAEngine = new EdDSAEngine();
-                edDSAEngine.initSign(keyPair.getPrivate());
-
-                byte[] dataToSign = new byte[64];
-                System.arraycopy(curve25519KeyPair.getPublicKey(), 0, dataToSign, 0, 32);
-                System.arraycopy(atvPublicKey, 0, dataToSign, 32, 32);
-                byte[] signature = aesCtr128Encrypt.update(edDSAEngine.signOneShot(dataToSign));
-
-                byte[] pairVerify2Request = new byte[68];
-                pairVerify2Request[0] = 0;
-                pairVerify2Request[1] = 0;
-                pairVerify2Request[2] = 0;
-                pairVerify2Request[3] = 0;
-                System.arraycopy(signature, 0, pairVerify2Request, 4, 64);
-                String pairVerifyRequest2 = 
-                    "POST /pair-verify RTSP/1.0\r\n" +
-                    "X-Apple-PD: 1\r\n" +
-                    "X-Apple-AbsoluteTime: 759932340\r\n" +
-                    "Content-Length: 68\r\n" +
-                    "Content-Type: application/octet-stream\r\n" +
-                    "CSeq: 3\r\n" +
-                    "DACP-ID: 68D3A0F57F146B1B\r\n" +
-                    "Active-Remote: 2442483712\r\n" +
-                    "User-Agent: AirPlay/775.3.1\r\n\r\n";
-
-                out.write(pairVerifyRequest2.getBytes());
-                out.write(pairVerify2Request);
-                out.flush();
-
-                // 读取第二个 pair-verify 响应
-                response = readResponse(in);
-                fragment.logOnMainThread("收到第二个 pair-verify 响应：" + response.header);
-
-                // 发送 FP-SETUP 请求
-                String fpSetupRequest = 
-                    "POST /fp-setup RTSP/1.0\r\n" +
-                    "X-Apple-ET: 32\r\n" +
-                    "Content-Length: 16\r\n" +
-                    "Content-Type: application/octet-stream\r\n" +
-                    "CSeq: 4\r\n" +
-                    "DACP-ID: 68D3A0F57F146B1B\r\n" +
-                    "Active-Remote: 2442483712\r\n" +
-                    "User-Agent: AirPlay/775.3.1\r\n\r\n";
-                
-                out.write(fpSetupRequest.getBytes());
-                out.flush();
-                out.write(FP_SETUP_REQUEST);
-                out.flush();
-
-                // 读取fp-setup响应
-                response = readResponse(in);
-                fragment.logOnMainThread("收到FP-SETUP响应：" + response.header);
-                
-                // 发送第二个 FP-SETUP 请求
-                String fpSetupRequest2 = 
-                    "POST /fp-setup RTSP/1.0\r\n" +
-                    "X-Apple-ET: 32\r\n" +
-                    "Content-Length: 164\r\n" +
-                    "Content-Type: application/octet-stream\r\n" +
-                    "CSeq: 5\r\n" +
-                    "DACP-ID: 68D3A0F57F146B1B\r\n" +
-                    "Active-Remote: 2442483712\r\n" +
-                    "User-Agent: AirPlay/775.3.1\r\n\r\n";
-                
-                out.write(fpSetupRequest2.getBytes());
-                out.flush();
-                out.write(FP_SETUP_REQUEST_2);
-                out.flush();
-
-                // 读取第二个fp-setup响应
-                response = readResponse(in);
-                fragment.logOnMainThread("收到第二个FP-SETUP响应：" + response.header);
-                
-                // 构建 SETUP 请求的 plist
-                NSDictionary setupDict = new NSDictionary();
-                setupDict.put("et", 32);
-                setupDict.put("statsCollectionEnabled", false);
-                setupDict.put("eiv", decodeBase64("91IdM6RTh4keicMei2GfQA=="));
-                setupDict.put("sessionUUID", "E9F7DFFF-2870-48DE-A5EA-8BADCAAB79C5");
-                setupDict.put("timingProtocol", "NTP");
-                setupDict.put("osName", "iPhone OS");
-                setupDict.put("osBuildVersion", "21G93");
-                setupDict.put("sourceVersion", "775.3.1");
-                setupDict.put("timingPort", 55606);
-                setupDict.put("isScreenMirroringSession", true);
-                setupDict.put("osVersion", "17.6.1");
-                setupDict.put("ekey", new byte[]{70, 80, 76, 89, 1, 2, 1, 0, 0, 0, 0, 60, 0, 0, 0, 0, 63, 121, 70, -69, 3, -8, 117, -13, 83, 72, 105, -51, -11, -43, -1, 17, 0, 0, 0, 16, 24, -109, 13, 105, -32, -125, -73, -128, 21, 29, -31, 72, -41, 112, -36, -75, 57, 110, 71, -72, -25, -59, 102, 22, 19, -43, 35, 74, -20, 86, 15, 16, 126, 5, 15, -45});
-                setupDict.put("sessionCorrelationUUID", "22E39508-74C6-4BCE-8685-AB01DB111C21");
-                setupDict.put("deviceID", "26:59:51:2E:80:25");  // 使用真实的 MAC 地址
-                setupDict.put("model", "iPad14,2");
-                setupDict.put("name", "舒舒平板");
-                setupDict.put("macAddress", "26:59:51:2E:80:25");  // 使用真实的 MAC 地址
-                
-                // 将 plist 转换为二进制数据
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                PropertyListParser.saveAsBinary(setupDict, baos);
-                byte[] plistData = baos.toByteArray();
-                
-                // 构建 SETUP 请求
-                String setupRequest = 
-                    "SETUP rtsp://" + "10.140.1.183" + "/709908614630099013 RTSP/1.0\r\n" +
-                    "Content-Length: " + plistData.length + "\r\n" +
-                    "Content-Type: application/x-apple-binary-plist\r\n" +
-                    "CSeq: 6\r\n" +
-                    "DACP-ID: 68D3A0F57F146B1B\r\n" +
-                    "Active-Remote: 2442483712\r\n" +
-                    "User-Agent: AirPlay/775.3.1\r\n\r\n";
-                
-                // 发送请求头和 plist 数据
-                out.write(setupRequest.getBytes());
-                out.write(plistData);
-                out.flush();
-                
-                // 读取 SETUP 响应
-                response = readResponse(in);
-                fragment.logOnMainThread("收到 SETUP 响应：" + response.header);
-                
-                // 发送 RECORD 请求
-                String recordRequest = 
-                    "RECORD rtsp://" + "10.140.1.183" + "/709908614630099013 RTSP/1.0\r\n" +
-                    "CSeq: 7\r\n" +
-                    "DACP-ID: 68D3A0F57F146B1B\r\n" +
-                    "Active-Remote: 2442483712\r\n" +
-                    "User-Agent: AirPlay/775.3.1\r\n\r\n";
-                
-                out.write(recordRequest.getBytes());
-                out.flush();
-                
-                // 读取 RECORD 响应
-                response = readResponse(in);
-                fragment.logOnMainThread("收到 RECORD 响应：" + response.header);
-                */
-
                 // 构建 SDP 内容
                 String sdpContent = 
                     "v=0\r\n" +
@@ -598,70 +548,6 @@ public class MirrorHomeFragment extends Fragment {
                 response = readResponse(in);
                 fragment.logOnMainThread("收到 SETUP 响应：" + response.header);
                 
-                /* 
-                // 构建第二个 SETUP 请求的 plist
-                NSDictionary setupDict2 = new NSDictionary();
-                NSDictionary streamDict = new NSDictionary();
-                NSArray streams = new NSArray(1);
-                NSArray timestampInfo = new NSArray(5);
-                
-                // 构建 timestampInfo 数组
-                int index = 0;
-                for (String name : new String[]{"SubSu", "BePxT", "AfPxT", "BefEn", "EmEnc"}) {
-                    NSDictionary timeDict = new NSDictionary();
-                    timeDict.put("name", name);
-                    timestampInfo.setValue(index, timeDict);
-                    index++;
-                }
-                
-                streamDict.put("timestampInfo", timestampInfo);
-                streamDict.put("latencyMs", 100);
-                streamDict.put("type", 110);
-                streamDict.put("streamConnectionID", 7360034197512602439L);
-                
-                streams.setValue(0, streamDict);  // 将 streamDict 设置为数组的第一个元素
-                setupDict2.put("streams", streams);
-                
-                // 将 plist 转换为二进制数据
-                ByteArrayOutputStream baos2 = new ByteArrayOutputStream();
-                PropertyListParser.saveAsBinary(setupDict2, baos2);
-                byte[] plistData2 = baos2.toByteArray();
-                
-                // 构建第二个 SETUP 请求
-                String setupRequest2 = 
-                    "SETUP rtsp://" + "10.140.1.183" + "/709908614630099013 RTSP/1.0\r\n" +
-                    "Content-Length: " + plistData2.length + "\r\n" +
-                    "Content-Type: application/x-apple-binary-plist\r\n" +
-                    "CSeq: 8\r\n" +
-                    "DACP-ID: 68D3A0F57F146B1B\r\n" +
-                    "Active-Remote: 2442483712\r\n" +
-                    "User-Agent: AirPlay/775.3.1\r\n\r\n";
-                
-                // 发送第二个 SETUP 请求
-                out.write(setupRequest2.getBytes());
-                out.write(plistData2);
-                out.flush();
-                
-                // 读取第二个 SETUP 响应
-                response = readResponse(in);
-                fragment.logOnMainThread("收到第二个 SETUP 响应：" + response.header);
-
-                // 解析二进制 plist
-                NSDictionary responseDict = (NSDictionary)PropertyListParser.parse(response.body);
-                fragment.logOnMainThread("收到第二个 SETUP 响应 body：" + responseDict.toXMLPropertyList());
-                NSArray responseStreams = (NSArray)responseDict.get("streams");
-                NSDictionary streamInfo = (NSDictionary)responseStreams.objectAtIndex(0);
-                
-                // 获取数据端口
-                int dataPort = streamInfo.get("dataPort").toJavaObject(Integer.class);
-                fragment.logOnMainThread("获取到数据端口: " + dataPort);
-                
-                // 创建并启动 RTP 发送线程
-                FairPlayVideoEncryptor encryptor = new FairPlayVideoEncryptor(sharedSecret);
-                RtpSenderThread rtpSender = new RtpSenderThread(host, dataPort, com.gitee.connect_screen.State.getMediaProjection(), encryptor);
-                rtpSender.start();
-                */
-
                 while (isRunning) {
                     // TODO: 从编码器获取 H.264 帧数据并发送
                     Thread.sleep(500);
