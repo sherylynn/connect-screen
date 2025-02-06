@@ -164,7 +164,7 @@ public class MirrorHomeFragment extends Fragment {
 
             @Override
             public void onServiceFound(NsdServiceInfo serviceInfo) {
-                if (serviceInfo.getServiceType().contains("_airplay") && serviceInfo.getServiceName().contains("UxPlay")) {
+                if (serviceInfo.getServiceType().contains("_airplay") && serviceInfo.getServiceName().contains("多屏互动")) {
                     Log.i(TAG, "发现服务: " + serviceInfo.getServiceName());
                     Log.i(TAG, "服务类型: " + serviceInfo.getServiceType());
                     Log.i(TAG, "服务端口: " + serviceInfo.getPort());
@@ -332,6 +332,7 @@ public class MirrorHomeFragment extends Fragment {
                     fragment.logOnMainThread("解析 plist 失败：" + e.getMessage());
                 }
 
+                /* 
                 // 发送 pair-setup 请求
                 String pairSetupRequest = 
                     "POST /pair-setup RTSP/1.0\r\n" +
@@ -537,7 +538,67 @@ public class MirrorHomeFragment extends Fragment {
                 // 读取 RECORD 响应
                 response = readResponse(in);
                 fragment.logOnMainThread("收到 RECORD 响应：" + response.header);
+                */
+
+                // 构建 SDP 内容
+                String sdpContent = 
+                    "v=0\r\n" +
+                    "o=AirTunes 709908614630099013 0 IN IP4 10.140.1.183\r\n" +
+                    "s=AirTunes\r\n" +
+                    "i=iPhone\r\n" +
+                    "c=IN IP4 10.140.1.183\r\n" +
+                    "t=0 0\r\n" +
+                    "m=audio 0 RTP/AVP 96\r\n" +
+                    "a=rtpmap:96 mpeg4-generic/44100/2\r\n" +
+                    "a=fmtp:96 mode=AAC-eld; constantDuration=480\r\n" +
+                    "a=min-latency:4410\r\n" +
+                    "a=max-latency:4410\r\n" +
+                    "m=video 0 RTP/AVP 97\r\n" +
+                    "a=rtpmap:97 H264\r\n" +
+                    "a=fmtp:97\r\n";
+
+                // 计算 SDP 内容的字节长度
+                int contentLength = sdpContent.getBytes().length;
+
+                // 构建 ANNOUNCE 请求
+                String announceRequest = 
+                    "ANNOUNCE rtsp://" + "10.140.1.183" + "/709908614630099013 RTSP/1.0\r\n" +
+                    "X-Apple-Device-ID: 0xf0d1a983e4cc\r\n" +
+                    "X-Apple-Client-Name: iPhone\r\n" +
+                    "CSeq: 9\r\n" +
+                    "DACP-ID: 68D3A0F57F146B1B\r\n" +
+                    "Active-Remote: 2442483712\r\n" +
+                    "Content-Type: application/sdp\r\n" +
+                    "User-Agent: AirPlay/775.3.1\r\n" +
+                    "Content-Length: " + contentLength + "\r\n\r\n" +
+                    sdpContent;
+
+                // 发送 ANNOUNCE 请求
+                out.write(announceRequest.getBytes());
+                out.flush();
+
+                // 读取 ANNOUNCE 响应
+                response = readResponse(in);
+                fragment.logOnMainThread("收到 ANNOUNCE 响应：" + response.header);
+
+                // 构建 SETUP 请求
+                String setupRequest = 
+                    "SETUP rtsp://192.168.2.109/10685155445721732316/audio RTSP/1.0\r\n" +
+                    "Transport: RTP/AVP/UDP;unicast;mode=screen;timing_port=61544;events;control_port=58147;redundant=2\r\n" +
+                    "CSeq: 81\r\n" +
+                    "DACP-ID: 2751F74C147C63A1\r\n" +
+                    "Active-Remote: 813031159\r\n" +
+                    "User-Agent: AirPlay/160.10\r\n\r\n";
+
+                // 发送 SETUP 请求
+                out.write(setupRequest.getBytes());
+                out.flush();
+
+                // 读取 SETUP 响应
+                response = readResponse(in);
+                fragment.logOnMainThread("收到 SETUP 响应：" + response.header);
                 
+                /* 
                 // 构建第二个 SETUP 请求的 plist
                 NSDictionary setupDict2 = new NSDictionary();
                 NSDictionary streamDict = new NSDictionary();
@@ -599,6 +660,7 @@ public class MirrorHomeFragment extends Fragment {
                 FairPlayVideoEncryptor encryptor = new FairPlayVideoEncryptor(sharedSecret);
                 RtpSenderThread rtpSender = new RtpSenderThread(host, dataPort, com.gitee.connect_screen.State.getMediaProjection(), encryptor);
                 rtpSender.start();
+                */
 
                 while (isRunning) {
                     // TODO: 从编码器获取 H.264 帧数据并发送
