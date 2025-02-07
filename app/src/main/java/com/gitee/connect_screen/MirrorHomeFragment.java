@@ -68,6 +68,10 @@ import android.media.MediaRecorder;
 import android.media.AudioAttributes;
 import android.media.AudioPlaybackCaptureConfiguration;
 
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.DatagramPacket;
+
 public class MirrorHomeFragment extends Fragment {
     private static final String TAG = "MirrorHomeFragment";
     private static final int NTP_PORT = 55606;
@@ -115,7 +119,6 @@ public class MirrorHomeFragment extends Fragment {
 
         nsdSearchBtn.setOnClickListener(v -> {
             if (checkAndRequestPermissions()) {
-                initAudioRecording();
                 startNsdDiscovery();
             }
         });
@@ -238,7 +241,7 @@ public class MirrorHomeFragment extends Fragment {
         nsdManager.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, discoveryListener);
     }
 
-    private void initAudioRecording() {
+    private void initAudioRecording(int serverPort, String host) {
         try {
             // 检查系统版本
             if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) {
@@ -289,8 +292,12 @@ public class MirrorHomeFragment extends Fragment {
             audioEncoder.start();
             isRecording = true;
 
-            // 启动音频处理线程
-            new Thread(this::processAudio).start();
+            // 创建 UDP socket 用于发送音频数据
+            DatagramSocket audioSocket = new DatagramSocket();
+            InetAddress serverAddress = InetAddress.getByName(host);
+
+            // 修改音频处理线程，添加 UDP 发送功能
+            new Thread(() -> processAudio(audioSocket, serverAddress, serverPort)).start();
 
         } catch (Exception e) {
             Log.e(TAG, "初始化音频录制失败: " + e.getMessage());
@@ -299,7 +306,7 @@ public class MirrorHomeFragment extends Fragment {
         }
     }
 
-    private void processAudio() {
+    private void processAudio(DatagramSocket socket, InetAddress serverAddress, int serverPort) {
         byte[] buffer = new byte[4096];
         MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
         long frameCount = 0;
@@ -333,10 +340,46 @@ public class MirrorHomeFragment extends Fragment {
                         frameCount++;
                         
                         if (outputBuffer != null) {
-                            Log.d(TAG, String.format("获取到编码后的AAC数据: 大小=%d 字节, 偏移=%d, " +
-                                    "PTS=%d µs, 标志=%d, 帧计数=%d", 
-                                    bufferInfo.size, bufferInfo.offset, 
-                                    bufferInfo.presentationTimeUs, bufferInfo.flags, frameCount));
+                            byte[] encodedData = new byte[bufferInfo.size];
+                            outputBuffer.get(encodedData);
+                            
+                            // 构建 RTP 包头 (12 字节)
+                            byte[] rtpHeader = new byte[12];
+                            rtpHeader[0] = (byte) 0x80; // RTP version 2
+                            rtpHeader[1] = (byte) 0x60; // Payload type 96 for AAC
+                            
+                            // 序列号 (2 bytes)
+                            short seqNum = (short) frameCount;
+                            rtpHeader[2] = (byte) (seqNum >> 8);
+                            rtpHeader[3] = (byte) seqNum;
+                            
+                            // 时间戳 (4 bytes)
+                            long timestamp = bufferInfo.presentationTimeUs * 44100 / 1000000;
+                            rtpHeader[4] = (byte) (timestamp >> 24);
+                            rtpHeader[5] = (byte) (timestamp >> 16);
+                            rtpHeader[6] = (byte) (timestamp >> 8);
+                            rtpHeader[7] = (byte) timestamp;
+                            
+                            // SSRC (4 bytes) - 使用固定值
+                            rtpHeader[8] = 0x00;
+                            rtpHeader[9] = 0x00;
+                            rtpHeader[10] = 0x00;
+                            rtpHeader[11] = 0x01;
+                            
+                            // 组合 RTP 头和音频数据
+                            byte[] rtpPacket = new byte[rtpHeader.length + encodedData.length];
+                            System.arraycopy(rtpHeader, 0, rtpPacket, 0, rtpHeader.length);
+                            System.arraycopy(encodedData, 0, rtpPacket, rtpHeader.length, encodedData.length);
+                            
+                            // 发送 UDP 包
+                            DatagramPacket packet = new DatagramPacket(
+                                rtpPacket, rtpPacket.length, 
+                                serverAddress, serverPort
+                            );
+                            socket.send(packet);
+                            
+                            Log.d(TAG, String.format("已发送 RTP 包：大小=%d 字节, 序列号=%d, 时间戳=%d",
+                                rtpPacket.length, seqNum, timestamp));
                         }
                         
                         audioEncoder.releaseOutputBuffer(outputBufferIndex, false);
@@ -351,6 +394,7 @@ public class MirrorHomeFragment extends Fragment {
             }
         }
         
+        socket.close();
         Log.i(TAG, String.format("音频处理循环结束，共处理 %d 帧", frameCount));
     }
 
@@ -547,6 +591,27 @@ public class MirrorHomeFragment extends Fragment {
                 // 读取 SETUP 响应
                 response = readResponse(in);
                 fragment.logOnMainThread("收到 SETUP 响应：" + response.header);
+                
+                // 解析 Transport header 中的 server_port
+                String transportHeader = response.header.lines()
+                    .filter(line -> line.startsWith("Transport:"))
+                    .findFirst()
+                    .orElse("");
+                
+                int serverPort = -1;
+                if (!transportHeader.isEmpty()) {
+                    String serverPortStr = Arrays.stream(transportHeader.split(";"))
+                        .filter(param -> param.trim().startsWith("server_port="))
+                        .map(param -> param.split("=")[1])
+                        .findFirst()
+                        .orElse("-1");
+                    serverPort = Integer.parseInt(serverPortStr);
+                    fragment.logOnMainThread("解析到 server_port: " + serverPort);
+                }
+                
+                if (serverPort != -1) {
+                    fragment.initAudioRecording(serverPort, host);
+                }
                 
                 while (isRunning) {
                     // TODO: 从编码器获取 H.264 帧数据并发送
