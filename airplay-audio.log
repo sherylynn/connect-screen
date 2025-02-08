@@ -1,0 +1,78 @@
+
+SETUP rtsp://192.168.2.183/2631601768200818043 RTSP/1.0
+Content-Length: 221
+Content-Type: application/x-apple-binary-plist
+CSeq: 21
+DACP-ID: AC673903DD56FECC
+Active-Remote: 3318061309
+User-Agent: AirPlay/387.2
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>streams</key>
+	<array>
+		<dict>
+			<key>latencyMax</key>
+			<integer>3750</integer>
+			<key>redundantAudio</key>
+			<integer>2</integer>
+			<key>audioMode</key>
+			<string>default</string>
+			<key>latencyMin</key>
+			<integer>3750</integer>
+			<key>ct</key>
+			<integer>8</integer>
+			<key>spf</key>
+			<integer>480</integer>
+			<key>controlPort</key>
+			<integer>59750</integer>
+			<key>usingScreen</key>
+			<true/>
+			<key>audioFormat</key>
+			<integer>16777216</integer>
+			<key>type</key>
+			<integer>96</integer>
+		</dict>
+	</array>
+</dict>
+</plist>
+
+Handling request SETUP with URL rtsp://192.168.2.183/2631601768200818043
+DACP-ID: AC673903DD56FECC
+Active-Remote: 3318061309
+type = 96
+ct=8 spf=480 usingScreen=1 isMedia=0  audioFormat=0x1000000
+start audio connection, format AAC-ELD 44100/2
+raop_rtp starting audio
+raop_rtp local control port socket 40 port UDP 42433
+raop_rtp local data port    socket 41 port UDP 58798
+RAOP initialized success
+raop_rtp start_time = 1739019476.452662 (raop_rtp audio)
+
+RTSP/1.0 200 OK 
+Audio-Jack-Status: connected; type=digital 
+Content-Type: application/x-apple-binary-plist 
+Server: AirTunes/220.68 
+CSeq: 21 
+Content-Length: 104 
+ 
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>streams</key>
+	<array>
+		<dict>
+			<key>dataPort</key>
+			<integer>58798</integer>
+			<key>controlPort</key>
+			<integer>42433</integer>
+			<key>type</key>
+			<integer>96</integer>
+		</dict>
+	</array>
+</dict>
+</plist>
