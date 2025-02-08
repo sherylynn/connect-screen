@@ -272,12 +272,12 @@ public class MirrorHomeFragment extends Fragment {
                     .build();
 
             // 配置 AAC 编码器
-            MediaFormat format = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, SAMPLE_RATE, 2);
+            MediaFormat format = MediaFormat.createAudioFormat("audio/mp4a-latm", SAMPLE_RATE, 2);
             format.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectELD);
             format.setInteger(MediaFormat.KEY_BIT_RATE, 128000);
-            format.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 16384);
+            format.setLong("durationUs", 10000L);
 
-            audioEncoder = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC);
+            audioEncoder = MediaCodec.createEncoderByType("audio/mp4a-latm");
             audioEncoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
             
             // 开始录音和编码
@@ -352,31 +352,13 @@ public class MirrorHomeFragment extends Fragment {
                             rtpHeader[9] = 0x00;
                             rtpHeader[10] = 0x00;
                             rtpHeader[11] = 0x01;
-                            
-                            // 2. 构建 AU Header
-                            // AU-headers-length (16 bits) = 16 (因为只有一个 AU-header)
-                            byte[] auHeadersLength = new byte[2];
-                            auHeadersLength[0] = 0x00;
-                            auHeadersLength[1] = 0x10;  // 16 bits
-                            
-                            // AU-header (16 bits)
-                            // 13 bits for size + 3 bits for index
-                            int auHeader = (encodedData.length << 3) & 0xFFF8;
-                            byte[] auHeaderBytes = new byte[2];
-                            auHeaderBytes[0] = (byte) ((auHeader >> 8) & 0xFF);
-                            auHeaderBytes[1] = (byte) (auHeader & 0xFF);
-                            
+
                             // 3. 组装完整的 RTP 包
-                            byte[] rtpPacket = new byte[rtpHeader.length + auHeadersLength.length + 
-                                                      auHeaderBytes.length + encodedData.length];
+                            byte[] rtpPacket = new byte[rtpHeader.length + encodedData.length];
                             
                             // 复制各部分数据
                             System.arraycopy(rtpHeader, 0, rtpPacket, 0, rtpHeader.length);
-                            System.arraycopy(auHeadersLength, 0, rtpPacket, rtpHeader.length, auHeadersLength.length);
-                            System.arraycopy(auHeaderBytes, 0, rtpPacket, rtpHeader.length + auHeadersLength.length, 
-                                           auHeaderBytes.length);
-                            System.arraycopy(encodedData, 0, rtpPacket, rtpHeader.length + auHeadersLength.length + 
-                                           auHeaderBytes.length, encodedData.length);
+                            System.arraycopy(encodedData, 0, rtpPacket, rtpHeader.length, encodedData.length);
                             
                             // 发送 UDP 包
                             DatagramPacket packet = new DatagramPacket(
