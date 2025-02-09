@@ -775,11 +775,7 @@ public class MirrorHomeFragment extends Fragment {
                 out.write(bplist);
                 out.flush();
 
-                while (isRunning) {
-                    // TODO: 处理镜像数据流
-                    Thread.sleep(500);
-                }
-                socket.close();
+                new RtpSenderThread(socket, com.gitee.connect_screen.State.getMediaProjection()).start();
             } catch (Exception e) {
                 Log.e(TAG, "镜像连接失败：" + e.getMessage());
             }

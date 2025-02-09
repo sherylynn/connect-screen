@@ -4,7 +4,7 @@ package com.gitee.connect_screen;
 AirPlay Mirror Protocol Packet Structure
 ======================================
 
-Mirror Data Packet Header (128 bytes)
+Mirror Data Packet Header (128 bytes)f
 -----------------------------------
 
 Bytes 0-3:   Payload size (32-bit integer)
@@ -83,8 +83,6 @@ import java.nio.ByteBuffer;
 
 public class RtpSenderThread extends Thread {
     private static final String TAG = "RtpSenderThread";
-    private final String host;
-    private final int port;
     private Socket socket;
     private java.io.OutputStream outputStream;
     private boolean running = true;
@@ -93,22 +91,20 @@ public class RtpSenderThread extends Thread {
     private VirtualDisplay virtualDisplay;
     private long firstPacketTimestamp = 0;
     private int packetCount = 0;
-    private FairPlayVideoEncryptor encryptor;
 
-    public RtpSenderThread(String host, int port, MediaProjection mediaProjection, FairPlayVideoEncryptor encryptor) {
-        this.host = host;
-        this.port = port;
+    public RtpSenderThread(Socket socket, MediaProjection mediaProjection) {
+        this.socket = socket;
+        try {
+            this.outputStream = socket.getOutputStream();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         this.mediaProjection = mediaProjection;
-        this.encryptor = encryptor;
     }
 
     @Override
     public void run() {
         try {
-            socket = new Socket(host, port);
-            outputStream = socket.getOutputStream();
-            Log.i(TAG, "已连接到数据端口: " + port);
-
             // 初始化编码器
             Log.d(TAG, "开始初始化编码器...");
             setupEncoder();
@@ -235,7 +231,7 @@ public class RtpSenderThread extends Thread {
         // 添加调试日志
         Log.d(TAG, "SPS长度: " + sps.length + ", PPS长度: " + pps.length);
         
-        int payloadSize = 6 + 2 + sps.length + 3 + pps.length;
+        int payloadSize = 8 + sps.length + 3 + pps.length;
         byte[] packet = new byte[128 + payloadSize];
         
         // 修改为小端字节序 (little-endian)
@@ -254,8 +250,8 @@ public class RtpSenderThread extends Thread {
         // 设置包类型和选项
         packet[offset++] = 0x01;
         packet[offset++] = 0x00;
-        packet[offset++] = 0x16;
-        packet[offset++] = 0x01;
+        packet[offset++] = 0x06;
+        packet[offset++] = 0x00;
 
         // 设置NTP时间戳
         firstPacketTimestamp = TimestampUtils.getCurrentNtpTime(false);
@@ -287,35 +283,40 @@ public class RtpSenderThread extends Thread {
             packet[i] = 0;
         }
         
-        // 添加固定头部
-        byte[] payloadHeader = new byte[]{0x01, 0x64, 0x00, 0x28, (byte)0xff, (byte)0xe1};
-        System.arraycopy(payloadHeader, 0, packet, 128, 6);
-        offset = 134;
-        
-        // 添加SPS长度（大端字节序）并记录日志
-        packet[offset++] = (byte)((sps.length >> 8) & 0xFF);
-        packet[offset++] = (byte)(sps.length & 0xFF);
-        Log.d(TAG, String.format("SPS长度字节: [%02X %02X]", 
-            packet[offset-2] & 0xFF, packet[offset-1] & 0xFF));
-        System.arraycopy(sps, 0, packet, offset, sps.length);
-        offset += sps.length;
-        // number of pps
-        packet[offset++] = (byte)(0x01);
-        // 添加PPS长度（大端字节序）并记录日志
-        packet[offset++] = (byte)((pps.length >> 8) & 0xFF);
-        packet[offset++] = (byte)(pps.length & 0xFF);
-        Log.d(TAG, String.format("PPS长度字节: [%02X %02X]", 
-            packet[offset-2] & 0xFF, packet[offset-1] & 0xFF));
-        System.arraycopy(pps, 0, packet, offset, pps.length);
+        // encode payload
+        packet[128 + 0] = 0x01; // version
+        packet[128 + 1] = 0x64; // profile
+        packet[128 + 2] = (byte) 0xC0; // compatibility
+        packet[128 + 3] = 0x28; // level
 
+        // 设置NAL单元长度大小(4字节)
+        packet[128 + 4] = (byte) 0xFF; // 0x03 表示NAL长度为4字节(3+1)
         
-        Log.d(TAG, "First packet NTP timestamp written at offset 8");
+        // 设置SPS
+        packet[128 + 5] = (byte) 0xE1; // SPS计数为1
+        // SPS长度(2字节,大端序)
+        int spsLength = sps.length;
+        packet[128 + 6] = (byte)((spsLength >> 8) & 0xFF);
+        packet[128 + 7] = (byte)(spsLength & 0xFF);
+        // 复制SPS数据
+        System.arraycopy(sps, 0, packet, 128 + 8, spsLength);
         
+        // 设置PPS
+        int ppsOffset = 128 + 8 + spsLength;
+        packet[ppsOffset] = (byte) 0x01; // PPS计数为1
+        // PPS长度(2字节,大端序)
+        int ppsLength = pps.length;
+        packet[ppsOffset + 1] = (byte)((ppsLength >> 8) & 0xFF);
+        packet[ppsOffset + 2] = (byte)(ppsLength & 0xFF);
+        // 复制PPS数据
+        System.arraycopy(pps, 0, packet, ppsOffset + 3, ppsLength);
+
+
         // 发送数据包前添加日志
         Log.d(TAG, "准备发送数据包，总大小: " + packet.length + " 字节");
         outputStream.write(packet);
         outputStream.flush();
-        Log.d(TAG, "第一个数据包(SPS/PPS)发送完成");
+        Log.d(TAG, "第一个数据包(SPS/PPS)发送完成: " + android.util.Base64.encodeToString(packet, android.util.Base64.DEFAULT));
         packetCount = 1; // 记录这是第一个包
     }
 
@@ -413,8 +414,8 @@ public class RtpSenderThread extends Thread {
         // 设置包类型和选项
         boolean isKeyFrame = (bufferInfo.flags & MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0;
         packet[4] = 0x00;
-        packet[5] = (byte)(isKeyFrame ? 0x10 : 0x00);
-        packet[6] = 0x00;
+        packet[5] = 0x00;
+        packet[6] = 0x06;
         packet[7] = 0x00;
 
         // 设置NTP时间戳
@@ -423,6 +424,30 @@ public class RtpSenderThread extends Thread {
             currentTime = firstPacketTimestamp;
         }
         TimestampUtils.putLittleEndian(packet, 8, currentTime);
+
+        // 设置分辨率信息 (使用IEEE 754格式)
+        int width = 1920;
+        int height = 1080;
+
+        writeFloat(packet, 16, width);  // 源宽度
+        writeFloat(packet, 20, height); // 源高度
+
+        // 清零保留字节
+        for (int i = 24; i < 40; i++) {
+            packet[i] = 0;
+        }
+
+        writeFloat(packet, 40, width);  // 重复源宽度
+        writeFloat(packet, 44, height); // 重复源高度
+        writeFloat(packet, 48, width);  // 其他宽度值
+        writeFloat(packet, 52, height); // 其他高度值
+        writeFloat(packet, 56, width);  // 显示宽度
+        writeFloat(packet, 60, height); // 显示高度
+
+        // 清零剩余保留字节
+        for (int i = 64; i < 128; i++) {
+            packet[i] = 0;
+        }
 
         // 将NAL单元复制到数据包中，每个NAL单元前加上4字节的大小前缀
         currentOffset = 0;
@@ -463,7 +488,7 @@ public class RtpSenderThread extends Thread {
 
         try {
             // 加密整个payload
-            encryptor.encrypt(payload);
+//            encryptor.encrypt(payload);
 
             // 将加密后的payload复制到packet中
             System.arraycopy(payload, 0, packet, 128, payload.length);
