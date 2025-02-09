@@ -42,6 +42,13 @@ public class MirrorHomeFragment extends Fragment {
     private RTSPServer rtspServer;
     private VideoServer videoServer;
 
+    static {
+        System.loadLibrary("server");
+    }
+    
+    private native void startServer();
+    private native void stopServer();
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -84,6 +91,7 @@ public class MirrorHomeFragment extends Fragment {
         NvHTTP.CA_CERT = caCert;
         NvHTTP.CA_KEY = caKey;
         initializeNsdService(context);
+        startServer();
     }
 
     private void initializeNsdService(Context context) {
@@ -142,6 +150,7 @@ public class MirrorHomeFragment extends Fragment {
                 e.printStackTrace();
             }
         }
+        stopServer();
         super.onDestroy();
     }
 
