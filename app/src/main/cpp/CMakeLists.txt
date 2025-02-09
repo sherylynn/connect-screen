@@ -11,7 +11,8 @@ add_library(
         server.cpp
         logging.cpp
         network.cpp
-        config.cpp)
+        config.cpp
+        stream.cpp)
 
 # 添加 ENet 的头文件路径
 target_include_directories(server PRIVATE
