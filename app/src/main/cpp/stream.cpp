@@ -116,6 +116,7 @@ namespace stream {
 
             return -1;
         }
+        return 0;
     }
 
   void start() {
