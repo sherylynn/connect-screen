@@ -28,6 +28,7 @@ import com.gitee.connect_screen.airplay.FairPlayVideoEncryptor;
 import com.gitee.connect_screen.job.ExitAll;
 import com.dd.plist.PropertyListParser;
 import com.dd.plist.NSDictionary;
+import com.dd.plist.BinaryPropertyListWriter;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -219,7 +220,8 @@ public class MirrorHomeFragment extends Fragment {
                             Log.i(TAG, "设备端口: " + port);
                             
                             // 然后启动 RTSP 连接线程
-                            new RtspConnectionThread(host, port, requireContext(), MirrorHomeFragment.this).start();
+//                            new RtspConnectionThread(host, port, requireContext(), MirrorHomeFragment.this).start();
+                            new AirplayMirrorThread(host, requireContext()).start();
                         }
                     });
                 }
@@ -276,6 +278,7 @@ public class MirrorHomeFragment extends Fragment {
             format.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectELD);
             format.setInteger(MediaFormat.KEY_BIT_RATE, 128000);
             format.setLong("durationUs", 10000L);
+            format.setByteBuffer("csd-0", ByteBuffer.wrap(new byte[]{-8, -24, 80, 0}));
 
             audioEncoder = MediaCodec.createEncoderByType("audio/mp4a-latm");
             audioEncoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
@@ -687,4 +690,138 @@ public class MirrorHomeFragment extends Fragment {
         return android.util.Base64.decode(base64String, android.util.Base64.DEFAULT);
     }
 
+    private static class AirplayMirrorThread extends Thread {
+        private final String host;
+        private final Context context;
+        private static final int MIRROR_PORT = 7100;
+        private boolean isRunning = true;
+
+        public AirplayMirrorThread(String host, Context context) {
+            this.host = host;
+            this.context = context;
+        }
+
+        @Override
+        public void run() {
+            try {
+                Socket socket = new Socket(host, MIRROR_PORT);
+                OutputStream out = socket.getOutputStream();
+                InputStream in = socket.getInputStream();
+
+                // 构建 GET /stream.xml 请求
+                String streamRequest = 
+                    "GET /stream.xml HTTP/1.1\r\n" +
+                    "User-Agent: Mirroring360/1.1.7.5\r\n" +
+                    "X-Apple-Device-ID: 0x61:78:9E:10:13:FC\r\n" +
+                    "X-Apple-Client-Name: vivo-V2203A\r\n" +
+                    "X-Apple-ProtocolVersion: 1\r\n" +
+                    "rmodel: PC1,1\r\n" +
+                    "Content-Length: 0\r\n\r\n";
+
+                // 发送请求
+                out.write(streamRequest.getBytes());
+                out.flush();
+
+                // 读取响应
+                RtspConnectionThread.RtspResponse response = readResponse(in);
+                Log.i(TAG, "收到 stream.xml 响应：" + response.header);
+                Log.i(TAG, "body " + new String(response.body));
+
+                // 读取 stream.xml 响应后，发送 POST 请求
+                NSDictionary rootDict = new NSDictionary();
+                rootDict.put("deviceID", "61:78:9E:10:13:FC");
+                rootDict.put("latencyMs", 50);
+                rootDict.put("sessionID", 2962749957L);
+                rootDict.put("version", "150.33");
+                
+                // 创建 NSArray
+                NSArray fpsInfo = new NSArray(8);
+                fpsInfo.setValue(0, "SubS");
+                fpsInfo.setValue(1, "B4En");
+                fpsInfo.setValue(2, "EnDp");
+                fpsInfo.setValue(3, "IdEn");
+                fpsInfo.setValue(4, "IdDp");
+                fpsInfo.setValue(5, "EQDp");
+                fpsInfo.setValue(6, "QueF");
+                fpsInfo.setValue(7, "Sent");
+                rootDict.put("fpsInfo", fpsInfo);
+
+                NSArray timestampInfo = new NSArray(7);
+                timestampInfo.setValue(0, "SubSu");
+                timestampInfo.setValue(1, "BePxT");
+                timestampInfo.setValue(2, "AfPxt");
+                timestampInfo.setValue(3, "BefEn");
+                timestampInfo.setValue(4, "EmEnc");
+                timestampInfo.setValue(5, "QueFr");
+                timestampInfo.setValue(6, "SndFr");
+                rootDict.put("timestampInfo", timestampInfo);
+
+                // 将 dictionary 转换为 binary plist
+                byte[] bplist = BinaryPropertyListWriter.writeToArray(rootDict);
+                
+                // 构建 POST 请求
+                String postRequest = 
+                    "POST /stream HTTP/1.1\r\n" +
+                    "User-Agent: Mirroring360/1.1.7.5\r\n" +
+                    "X-Apple-Device-ID: 0x61:78:9E:10:13:FC\r\n" +
+                    "X-Apple-Client-Name: vivo-V2203A\r\n" +
+                    "X-Apple-ProtocolVersion: 1\r\n" +
+                    "Content-Type: application/x-apple-binary-plist\r\n" +
+                    "Content-Length: " + bplist.length + "\r\n\r\n";
+
+                // 发送请求头
+                out.write(postRequest.getBytes());
+                // 发送 binary plist 数据
+                out.write(bplist);
+                out.flush();
+
+                while (isRunning) {
+                    // TODO: 处理镜像数据流
+                    Thread.sleep(500);
+                }
+                socket.close();
+            } catch (Exception e) {
+                Log.e(TAG, "镜像连接失败：" + e.getMessage());
+            }
+        }
+
+        private RtspConnectionThread.RtspResponse readResponse(InputStream in) throws IOException {
+            StringBuilder headerBuilder = new StringBuilder();
+            byte[] buffer = new byte[1];
+            
+            // 读取 header 直到遇到空行
+            int consecutiveNewlines = 0;
+            while (consecutiveNewlines < 4) {
+                if (in.read(buffer) == -1) break;
+                headerBuilder.append((char) buffer[0]);
+                if (buffer[0] == '\r' || buffer[0] == '\n') {
+                    consecutiveNewlines++;
+                } else {
+                    consecutiveNewlines = 0;
+                }
+            }
+            
+            String header = headerBuilder.toString();
+            
+            // 解析 Content-Length
+            int contentLength = 0;
+            for (String line : header.split("\r\n")) {
+                if (line.toLowerCase().startsWith("content-length:")) {
+                    contentLength = Integer.parseInt(line.substring("content-length:".length()).trim());
+                    break;
+                }
+            }
+            
+            // 读取 body
+            byte[] body = new byte[contentLength];
+            int totalBytesRead = 0;
+            while (totalBytesRead < contentLength) {
+                int bytesRead = in.read(body, totalBytesRead, contentLength - totalBytesRead);
+                if (bytesRead == -1) break;
+                totalBytesRead += bytesRead;
+            }
+            
+            return new RtspConnectionThread.RtspResponse(header, body);
+        }
+    }
 }
