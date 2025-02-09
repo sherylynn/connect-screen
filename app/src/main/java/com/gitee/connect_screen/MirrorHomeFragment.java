@@ -91,7 +91,6 @@ public class MirrorHomeFragment extends Fragment {
         NvHTTP.CA_CERT = caCert;
         NvHTTP.CA_KEY = caKey;
         initializeNsdService(context);
-        startServer();
     }
 
     private void initializeNsdService(Context context) {
@@ -110,6 +109,7 @@ public class MirrorHomeFragment extends Fragment {
                 nvHttps = new NvHTTPS();
                 rtspServer = new RTSPServer();
                 videoServer = new VideoServer();
+                startServer();
                 try {
                     nvHttp.start();
                     nvHttps.start();
