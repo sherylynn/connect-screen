@@ -17,6 +17,8 @@
 #include "sync.h"
 #include "logging.h"
 #include "stream.h"
+#include "thread_safe.h"
+#include "globals.h"
 
 namespace asio = boost::asio;
 namespace sys = boost::system;
@@ -100,8 +102,24 @@ namespace stream {
   };
   
   void control_server_t::iterate(std::chrono::milliseconds timeout) {
+      ENetEvent event;
+      auto res = enet_host_service(_host.get(), &event, timeout.count());
+      if (res > 0) {
+          BOOST_LOG(info) << "enet event result: " << res;
+      }
   }
 
+
+  void controlBroadcastThread(control_server_t *server) {
+      // Check for both the full shutdown event and the shutdown event for this
+      // broadcast to ensure we can inform connected clients of our graceful
+      // termination when we shut down.
+      auto shutdown_event = mail::man->event<bool>(mail::shutdown);
+      auto broadcast_shutdown_event = mail::man->event<bool>(mail::broadcast_shutdown);
+      while (!shutdown_event->peek() && !broadcast_shutdown_event->peek()) {
+          server->iterate(150ms);
+      }
+  }
 
     int start_broadcast(broadcast_ctx_t &ctx) {
         auto address_family = net::af_from_enum_string(config::sunshine.address_family);
@@ -117,12 +135,13 @@ namespace stream {
             return -1;
         }
         BOOST_LOG(info) << "bind Control server to port "sv << control_port;
+        ctx.control_thread = std::thread {controlBroadcastThread, &ctx.control_server};
         return 0;
     }
 
   void start() {
-      broadcast_ctx_t ctx;
-      start_broadcast(ctx);
+      broadcast_ctx_t* ctxPtr = new broadcast_ctx_t();
+      start_broadcast(*ctxPtr);
   }
 }
 

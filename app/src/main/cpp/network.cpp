@@ -167,7 +167,7 @@ namespace net {
         auto host = host_t {enet_host_create(af == IPV4 ? AF_INET : AF_INET6, &addr, 128, 0, 0, 0)};
 
         // Enable opportunistic QoS tagging (automatically disables if the network appears to drop tagged packets)
-        enet_socket_set_option(host->socket, ENET_SOCKOPT_QOS, 1);
+//        enet_socket_set_option(host->socket, ENET_SOCKOPT_QOS, 1);
 
         return host;
     }

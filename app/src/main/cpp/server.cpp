@@ -5,6 +5,7 @@
 #include <enet/enet.h>
 #include "stream.h"
 #include "logging.h"
+#include "globals.h"
 
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "ServerNative", __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "ServerNative", __VA_ARGS__)
@@ -17,6 +18,7 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_gitee_connect_1screen_MirrorHomeFragment_startServer(JNIEnv* env, jobject /* this */) {
     if (!running) {
         running = true;
+        mail::man = std::make_shared<safe::mail_raw_t>();
         deinit = logging::init(0);
         stream::start();
         LOGI("Server thread started");
