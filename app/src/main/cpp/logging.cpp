@@ -19,6 +19,9 @@
 // local includes
 #include "logging.h"
 
+// 添加 Android 日志头文件
+#include <android/log.h>
+
 using namespace std::literals;
 
 namespace bl = boost::log;
@@ -54,58 +57,52 @@ namespace logging {
 
         auto log_level = view.attribute_values()[severity].extract<int>().get();
 
+        // 修改日志级别映射到 Android 日志级别
+        android_LogPriority android_priority;
         std::string_view log_type;
         switch (log_level) {
             case 0:
+                android_priority = ANDROID_LOG_VERBOSE;
                 log_type = "Verbose: "sv;
                 break;
             case 1:
+                android_priority = ANDROID_LOG_DEBUG;
                 log_type = "Debug: "sv;
                 break;
             case 2:
+                android_priority = ANDROID_LOG_INFO;
                 log_type = "Info: "sv;
                 break;
             case 3:
+                android_priority = ANDROID_LOG_WARN;
                 log_type = "Warning: "sv;
                 break;
             case 4:
+                android_priority = ANDROID_LOG_ERROR;
                 log_type = "Error: "sv;
                 break;
             case 5:
+                android_priority = ANDROID_LOG_FATAL;
                 log_type = "Fatal: "sv;
                 break;
-#ifdef SUNSHINE_TESTS
-                case 10:
-        log_type = "Tests: "sv;
-        break;
-#endif
         };
 
-        auto now = std::chrono::system_clock::now();
-        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                now - std::chrono::time_point_cast<std::chrono::seconds>(now)
-        );
-
-        auto t = std::chrono::system_clock::to_time_t(now);
-        auto lt = *std::localtime(&t);
-
-        os << "["sv << std::put_time(&lt, "%Y-%m-%d %H:%M:%S.") << boost::format("%03u") % ms.count() << "]: "sv
-           << log_type << view.attribute_values()[message].extract<std::string>();
+        // 获取日志消息
+        std::string log_message = view.attribute_values()[message].extract<std::string>().get();
+        
+        // 输出到 Android 日志系统
+        __android_log_print(android_priority, "Sunshine", "%s%s", log_type.data(), log_message.c_str());
     }
 
-    [[nodiscard]] std::unique_ptr<deinit_t> init(int min_log_level, const std::string &log_file) {
+    [[nodiscard]] std::unique_ptr<deinit_t> init(int min_log_level) {
         if (sink) {
             // Deinitialize the logging system before reinitializing it. This can probably only ever be hit in tests.
             deinit();
         }
 
         sink = boost::make_shared<text_sink>();
-
-#ifndef SUNSHINE_TESTS
         boost::shared_ptr<std::ostream> stream {&std::cout, boost::null_deleter()};
         sink->locked_backend()->add_stream(stream);
-#endif
-        sink->locked_backend()->add_stream(boost::make_shared<std::ofstream>(log_file));
         sink->set_filter(severity >= min_log_level);
         sink->set_formatter(&formatter);
 

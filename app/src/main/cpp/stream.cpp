@@ -116,6 +116,7 @@ namespace stream {
 
             return -1;
         }
+        BOOST_LOG(info) << "bind Control server to port "sv << control_port;
         return 0;
     }
 

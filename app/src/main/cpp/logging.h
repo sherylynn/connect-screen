@@ -54,7 +54,7 @@ namespace logging {
      * log_init(2, "sunshine.log");
      * @examples_end
      */
-    [[nodiscard]] std::unique_ptr<deinit_t> init(int min_log_level, const std::string &log_file);
+    [[nodiscard]] std::unique_ptr<deinit_t> init(int min_log_level);
 
     /**
      * @brief Setup AV logging.
