@@ -155,8 +155,8 @@ public class ServiceUtils {
             if (ShizukuUtils.hasPermission()) {
                 launchAppWithShizuku(packageName, context, targetDisplayId);
             } else {
-                Toast.makeText(context, "启动应用失败", Toast.LENGTH_SHORT).show();
-                State.log("启动应用失败失败: " + e.getMessage());
+                Toast.makeText(context, "启动应用失败，该屏幕需要 shizuku 授权", Toast.LENGTH_SHORT).show();
+                State.log("启动应用失败，该屏幕需要 shizuku 授权: " + e);
             }
         }
     }
