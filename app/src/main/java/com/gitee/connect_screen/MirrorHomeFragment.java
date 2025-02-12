@@ -40,7 +40,6 @@ public class MirrorHomeFragment extends Fragment {
     private NvHTTP nvHttp;
     private NvHTTPS nvHttps;
     private RTSPServer rtspServer;
-    private VideoServer videoServer;
 
     static {
         System.loadLibrary("server");
@@ -108,13 +107,11 @@ public class MirrorHomeFragment extends Fragment {
                 nvHttp = new NvHTTP(addr);
                 nvHttps = new NvHTTPS();
                 rtspServer = new RTSPServer();
-                videoServer = new VideoServer();
                 startServer();
                 try {
                     nvHttp.start();
                     nvHttps.start();
                     rtspServer.start();
-                    videoServer.start();
                     android.util.Log.i("MirrorHomeFragment", "NvHTTP服务器启动成功，端口: " + NvHTTP.HTTP_PORT);
                 } catch (IOException e) {
                     android.util.Log.e("MirrorHomeFragment", "NvHTTP服务器启动失败", e);
