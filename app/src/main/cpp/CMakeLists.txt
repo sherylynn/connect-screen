@@ -3,7 +3,8 @@ project(connect_screen)
 
 add_subdirectory(wordexp)
 add_subdirectory(enet)
-include(${CMAKE_CURRENT_SOURCE_DIR}/dependencies/Boost_Sunshine.cmake)
+add_subdirectory(dependencies/openssl-cmake)
+include(dependencies/Boost_Sunshine.cmake)
 
 add_library(
         server
@@ -13,7 +14,8 @@ add_library(
         network.cpp
         config.cpp
         stream.cpp
-        globals.cpp)
+        globals.cpp
+        crypto.cpp)
 
 # 添加 ENet 的头文件路径
 target_include_directories(server PRIVATE
@@ -25,4 +27,6 @@ target_link_libraries(
         android
         log
         enet
+        ssl
+        crypto
         ${Boost_LIBRARIES})

@@ -13,6 +13,7 @@
 #include <boost/endian/arithmetic.hpp>
 
 #include "network.h"
+#include "crypto.h"
 #include "config.h"
 #include "sync.h"
 #include "logging.h"
