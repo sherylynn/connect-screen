@@ -4,16 +4,27 @@
  */
 #pragma once
 
+// standard includes
+#include <utility>
+
+// lib includes
+#include <boost/asio.hpp>
+
+// local includes
+#include "audio.h"
+#include "crypto.h"
+#include "video.h"
+
 namespace stream {
     constexpr auto VIDEO_STREAM_PORT = 9;
     constexpr auto CONTROL_PORT = 10;
     constexpr auto AUDIO_STREAM_PORT = 11;
-    void start();
-
 
     struct session_t;
 
     struct config_t {
+        audio::config_t audio;
+        video::config_t monitor;
 
         int packetsize;
         int minRequiredFecPackets;
@@ -27,7 +38,6 @@ namespace stream {
         std::optional<int> gcmap;
     };
 
-
     namespace session {
         enum class state_e : int {
             STOPPED,  ///< The session is stopped
@@ -40,6 +50,8 @@ namespace stream {
         struct launch_session_t {
             uint32_t id;
 
+            crypto::aes_t gcm_key;
+            crypto::aes_t iv;
 
             std::string av_ping_payload;
             uint32_t control_connect_data;
@@ -56,6 +68,7 @@ namespace stream {
             bool enable_hdr;
             bool enable_sops;
 
+            std::optional<crypto::cipher::gcm_t> rtsp_cipher;
             std::string rtsp_url_scheme;
             uint32_t rtsp_iv_counter;
         };
@@ -66,4 +79,4 @@ namespace stream {
         void join(session_t &session);
         state_e state(session_t &session);
     }  // namespace session
-}
+}  // namespace stream

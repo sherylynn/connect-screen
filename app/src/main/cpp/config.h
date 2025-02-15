@@ -12,6 +12,9 @@
 #include <unordered_map>
 #include <vector>
 
+// local includes
+//#include "nvenc/nvenc_config.h"
+
 namespace config {
     struct video_t {
         // ffmpeg params
@@ -28,6 +31,7 @@ namespace config {
             std::optional<int> svtav1_preset;
         } sw;
 
+//        nvenc::nvenc_config nv;
         bool nv_realtime_hags;
         bool nv_opengl_vulkan_on_dxgi;
         bool nv_sunshine_high_power_mode;
@@ -134,6 +138,7 @@ namespace config {
         } dd;
 
         int min_fps_factor;  // Minimum fps target, determines minimum frame time
+        int max_bitrate;  // Maximum bitrate, sets ceiling in kbps for bitrate requested from client
     };
 
     struct audio_t {

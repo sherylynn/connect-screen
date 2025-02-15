@@ -15,11 +15,19 @@ add_library(
         config.cpp
         stream.cpp
         globals.cpp
-        crypto.cpp)
+        crypto.cpp
+        platform/common.cpp
+        rswrapper.c
+        stat_trackers.cpp
+)
 
 # 添加 ENet 的头文件路径
 target_include_directories(server PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/enet/include
+        enet/include
+        dependencies/nanors/deps/obl
+        dependencies/nanors
+        dependencies/ffmpeg
+        dependencies
         ${Boost_INCLUDE_DIRS})
 
 target_link_libraries(

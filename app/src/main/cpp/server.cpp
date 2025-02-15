@@ -20,7 +20,7 @@ Java_com_gitee_connect_1screen_MirrorHomeFragment_startServer(JNIEnv* env, jobje
         running = true;
         mail::man = std::make_shared<safe::mail_raw_t>();
         deinit = logging::init(0);
-        stream::start();
+//        stream::start();
         LOGI("Server thread started");
     }
 }
