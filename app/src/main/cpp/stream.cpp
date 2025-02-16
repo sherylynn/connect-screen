@@ -15,7 +15,7 @@
 extern "C" {
 // clang-format off
 #include <moonlight-common-c/src/Limelight-internal.h>
-#include "rswrapper.h"
+#include "nanors/rs.h"
 // clang-format on
 }
 

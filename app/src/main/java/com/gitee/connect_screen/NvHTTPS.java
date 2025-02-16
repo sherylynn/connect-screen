@@ -110,11 +110,15 @@ public class NvHTTPS extends NanoHTTPD {
                             "<App><IsHdrSupported>1</IsHdrSupported><AppTitle>Desktop</AppTitle><ID>881448767</ID></App>" +
                             "</root>");
         } else if (session.getUri().equals("/launch")) {
-//            Map<String, String> params = session.getParms();
-//            String corever = params.get("corever");
-//            if (corever == null) {
-//                corever = "0";
-//            }
+            Map<String, String> params = session.getParms();
+            String rikeyid = params.get("rikeyid");
+            byte[] iv = new byte[16];
+            // 将rikeyid转换为big-endian的32位整数，并复制到iv数组的开头
+            int rikeyidInt = Integer.parseInt(rikeyid);
+            iv[0] = (byte) (rikeyidInt >> 24);
+            iv[1] = (byte) (rikeyidInt >> 16);
+            iv[2] = (byte) (rikeyidInt >> 8);
+            iv[3] = (byte) rikeyidInt;
             String protocol = "rtsp";
 //            if (Integer.parseInt(corever) >= 1) {
 //                protocol = "rtspenc";

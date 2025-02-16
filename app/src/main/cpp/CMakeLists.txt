@@ -17,8 +17,8 @@ add_library(
         globals.cpp
         crypto.cpp
         platform/common.cpp
-        rswrapper.c
         stat_trackers.cpp
+        dependencies/nanors/rs.c
 )
 
 # 添加 ENet 的头文件路径
