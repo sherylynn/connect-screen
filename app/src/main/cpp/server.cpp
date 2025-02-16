@@ -14,14 +14,19 @@ static bool running = false;
 
 static std::unique_ptr<logging::deinit_t> deinit;
 
+//static std::shared_ptr<stream::session_t> session;
+
 extern "C" JNIEXPORT void JNICALL
 Java_com_gitee_connect_1screen_MirrorHomeFragment_startServer(JNIEnv* env, jobject /* this */) {
     if (!running) {
         running = true;
         mail::man = std::make_shared<safe::mail_raw_t>();
         deinit = logging::init(0);
+        stream::session::launch_session_t launch_session = {};
+        stream::config_t config = {};
+        std::shared_ptr<stream::session_t> session = stream::session::alloc(config, launch_session);
 //        stream::start();
-        LOGI("Server thread started");
+        LOGI("Server thread started!!!");
     }
 }
 

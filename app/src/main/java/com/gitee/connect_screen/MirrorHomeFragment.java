@@ -7,6 +7,8 @@ import android.graphics.Paint;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -107,7 +109,13 @@ public class MirrorHomeFragment extends Fragment {
                 nvHttp = new NvHTTP(addr);
                 nvHttps = new NvHTTPS();
                 rtspServer = new RTSPServer();
-                startServer();
+                Handler handler = new Handler(Looper.getMainLooper());
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                    startServer();
+                    }
+                }, 1000);
                 try {
                     nvHttp.start();
                     nvHttps.start();

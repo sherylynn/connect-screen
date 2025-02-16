@@ -29,6 +29,22 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            debuggable true
+            ndk { debugSymbolLevel 'FULL' }
+            packaging {
+                jniLibs {
+                    keepDebugSymbols += "**/*.so"
+                }
+            }
+        }
+        debug {
+            packaging {
+                jniLibs {
+                    keepDebugSymbols += "**/*.so"
+                }
+            }
+            ndk { debugSymbolLevel 'FULL' }
+            debuggable true
         }
     }
     

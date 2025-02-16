@@ -1951,71 +1951,71 @@ namespace stream {
         std::shared_ptr<session_t> alloc(config_t &config, launch_session_t &launch_session) {
             auto session = std::make_shared<session_t>();
 
-            auto mail = std::make_shared<safe::mail_raw_t>();
-
-            session->shutdown_event = mail->event<bool>(mail::shutdown);
-            session->launch_session_id = launch_session.id;
-
-            session->config = config;
-
-            session->control.connect_data = launch_session.control_connect_data;
-            session->control.feedback_queue = mail->queue<platf::gamepad_feedback_msg_t>(mail::gamepad_feedback);
-            session->control.hdr_queue = mail->event<video::hdr_info_t>(mail::hdr);
-            session->control.legacy_input_enc_iv = launch_session.iv;
-            session->control.cipher = crypto::cipher::gcm_t {
-                    launch_session.gcm_key,
-                    false
-            };
-
-            session->video.idr_events = mail->event<bool>(mail::idr);
-            session->video.invalidate_ref_frames_events = mail->event<std::pair<int64_t, int64_t>>(mail::invalidate_ref_frames);
-            session->video.lowseq = 0;
-            session->video.ping_payload = launch_session.av_ping_payload;
-            if (config.encryptionFlagsEnabled & SS_ENC_VIDEO) {
-                BOOST_LOG(info) << "Video encryption enabled"sv;
-                session->video.cipher = crypto::cipher::gcm_t {
-                        launch_session.gcm_key,
-                        false
-                };
-                session->video.gcm_iv_counter = 0;
-            }
-
-            constexpr auto max_block_size = crypto::cipher::round_to_pkcs7_padded(2048);
-
-            util::buffer_t<char> shards {RTPA_TOTAL_SHARDS * max_block_size};
-            util::buffer_t<uint8_t *> shards_p {RTPA_TOTAL_SHARDS};
-
-            for (auto x = 0; x < RTPA_TOTAL_SHARDS; ++x) {
-                shards_p[x] = (uint8_t *) &shards[x * max_block_size];
-            }
-
-            // Audio FEC spans multiple audio packets,
-            // therefore its session specific
-            session->audio.shards = std::move(shards);
-            session->audio.shards_p = std::move(shards_p);
-
-            session->audio.fec_packet.rtp.header = 0x80;
-            session->audio.fec_packet.rtp.packetType = 127;
-            session->audio.fec_packet.rtp.timestamp = 0;
-            session->audio.fec_packet.rtp.ssrc = 0;
-
-            session->audio.fec_packet.fecHeader.payloadType = 97;
-            session->audio.fec_packet.fecHeader.ssrc = 0;
-
-            session->audio.cipher = crypto::cipher::cbc_t {
-                    launch_session.gcm_key,
-                    true
-            };
-
-            session->audio.ping_payload = launch_session.av_ping_payload;
-            session->audio.avRiKeyId = util::endian::big(*(std::uint32_t *) launch_session.iv.data());
-            session->audio.sequenceNumber = 0;
-            session->audio.timestamp = 0;
-
-            session->control.peer = nullptr;
-            session->state.store(state_e::STOPPED, std::memory_order_relaxed);
-
-            session->mail = std::move(mail);
+//            auto mail = std::make_shared<safe::mail_raw_t>();
+//
+//            session->shutdown_event = mail->event<bool>(mail::shutdown);
+//            session->launch_session_id = launch_session.id;
+//
+//            session->config = config;
+//
+//            session->control.connect_data = launch_session.control_connect_data;
+//            session->control.feedback_queue = mail->queue<platf::gamepad_feedback_msg_t>(mail::gamepad_feedback);
+//            session->control.hdr_queue = mail->event<video::hdr_info_t>(mail::hdr);
+//            session->control.legacy_input_enc_iv = launch_session.iv;
+//            session->control.cipher = crypto::cipher::gcm_t {
+//                    launch_session.gcm_key,
+//                    false
+//            };
+//
+//            session->video.idr_events = mail->event<bool>(mail::idr);
+//            session->video.invalidate_ref_frames_events = mail->event<std::pair<int64_t, int64_t>>(mail::invalidate_ref_frames);
+//            session->video.lowseq = 0;
+//            session->video.ping_payload = launch_session.av_ping_payload;
+//            if (config.encryptionFlagsEnabled & SS_ENC_VIDEO) {
+//                BOOST_LOG(info) << "Video encryption enabled"sv;
+//                session->video.cipher = crypto::cipher::gcm_t {
+//                        launch_session.gcm_key,
+//                        false
+//                };
+//                session->video.gcm_iv_counter = 0;
+//            }
+//
+//            constexpr auto max_block_size = crypto::cipher::round_to_pkcs7_padded(2048);
+//
+//            util::buffer_t<char> shards {RTPA_TOTAL_SHARDS * max_block_size};
+//            util::buffer_t<uint8_t *> shards_p {RTPA_TOTAL_SHARDS};
+//
+//            for (auto x = 0; x < RTPA_TOTAL_SHARDS; ++x) {
+//                shards_p[x] = (uint8_t *) &shards[x * max_block_size];
+//            }
+//
+//            // Audio FEC spans multiple audio packets,
+//            // therefore its session specific
+//            session->audio.shards = std::move(shards);
+//            session->audio.shards_p = std::move(shards_p);
+//
+//            session->audio.fec_packet.rtp.header = 0x80;
+//            session->audio.fec_packet.rtp.packetType = 127;
+//            session->audio.fec_packet.rtp.timestamp = 0;
+//            session->audio.fec_packet.rtp.ssrc = 0;
+//
+//            session->audio.fec_packet.fecHeader.payloadType = 97;
+//            session->audio.fec_packet.fecHeader.ssrc = 0;
+//
+//            session->audio.cipher = crypto::cipher::cbc_t {
+//                    launch_session.gcm_key,
+//                    true
+//            };
+//
+//            session->audio.ping_payload = launch_session.av_ping_payload;
+//            session->audio.avRiKeyId = util::endian::big(*(std::uint32_t *) launch_session.iv.data());
+//            session->audio.sequenceNumber = 0;
+//            session->audio.timestamp = 0;
+//
+//            session->control.peer = nullptr;
+//            session->state.store(state_e::STOPPED, std::memory_order_relaxed);
+//
+//            session->mail = std::move(mail);
 
             return session;
         }
