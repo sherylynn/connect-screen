@@ -42,7 +42,6 @@ public class MirrorHomeFragment extends Fragment {
     private NvHTTP nvHttp;
     private NvHTTPS nvHttps;
     private RTSPServer rtspServer;
-    private NativeServer nativeServer;
 
     @Nullable
     @Override
@@ -72,7 +71,6 @@ public class MirrorHomeFragment extends Fragment {
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
-        nativeServer = NativeServer.getInstance();
         byte[] caCert = new byte[0];
         byte[] caKey = new byte[0];
         try (InputStream certStream = context.getAssets().open("cacert.pem");
@@ -104,13 +102,6 @@ public class MirrorHomeFragment extends Fragment {
                 nvHttp = new NvHTTP(addr);
                 nvHttps = new NvHTTPS();
                 rtspServer = new RTSPServer();
-                Handler handler = new Handler(Looper.getMainLooper());
-                handler.postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        nativeServer.startServer(new byte[16]);
-                    }
-                }, 1000);
                 try {
                     nvHttp.start();
                     nvHttps.start();
@@ -150,7 +141,6 @@ public class MirrorHomeFragment extends Fragment {
                 e.printStackTrace();
             }
         }
-        nativeServer.stopServer();
         super.onDestroy();
     }
 

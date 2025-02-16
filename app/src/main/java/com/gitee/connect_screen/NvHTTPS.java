@@ -119,6 +119,7 @@ public class NvHTTPS extends NanoHTTPD {
             iv[1] = (byte) (rikeyidInt >> 16);
             iv[2] = (byte) (rikeyidInt >> 8);
             iv[3] = (byte) rikeyidInt;
+            NativeServer.getInstance().startServer(iv, session.getRemoteIpAddress());
             String protocol = "rtsp";
 //            if (Integer.parseInt(corever) >= 1) {
 //                protocol = "rtspenc";

@@ -17,7 +17,7 @@ static std::unique_ptr<logging::deinit_t> deinit;
 static std::shared_ptr<stream::session_t> session;
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_gitee_connect_1screen_NativeServer_startServer(JNIEnv* env, jobject /* this */, jbyteArray iv) {
+Java_com_gitee_connect_1screen_NativeServer_startServer(JNIEnv* env, jobject /* this */, jbyteArray iv, jstring peerIp) {
     if (!running) {
         running = true;
         mail::man = std::make_shared<safe::mail_raw_t>();
@@ -26,6 +26,9 @@ Java_com_gitee_connect_1screen_NativeServer_startServer(JNIEnv* env, jobject /* 
         // 获取iv数组数据
         jbyte* ivBytes = env->GetByteArrayElements(iv, nullptr);
         jsize ivLength = env->GetArrayLength(iv);
+        
+        // 获取peerIp字符串
+        const char* peerIpStr = env->GetStringUTFChars(peerIp, nullptr);
         
         stream::session::launch_session_t launch_session = {};
         stream::config_t config = {};
@@ -40,7 +43,11 @@ Java_com_gitee_connect_1screen_NativeServer_startServer(JNIEnv* env, jobject /* 
         env->ReleaseByteArrayElements(iv, ivBytes, JNI_ABORT);
         
         session = stream::session::alloc(config, launch_session);
-        stream::session::start(*session, "1.2.3.4");
+        stream::session::start(*session, peerIpStr);
+        
+        // 释放peerIp字符串
+        env->ReleaseStringUTFChars(peerIp, peerIpStr);
+        
         LOGI("Server thread started!!!");
     }
 }
