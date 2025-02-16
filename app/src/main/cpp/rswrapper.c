@@ -50,7 +50,7 @@
   #endif
   #define ISA_SUFFIX _ssse3
   #define OBLAS_SSE3
-  #include "../third-party/nanors/rs.c"
+  #include "nanors/rs.c"
   #undef OBLAS_SSE3
   #undef ISA_SUFFIX
   #if defined(__clang__)
@@ -68,7 +68,7 @@
   #endif
   #define ISA_SUFFIX _avx2
   #define OBLAS_AVX2
-  #include "../third-party/nanors/rs.c"
+  #include "nanors/rs.c"
   #undef OBLAS_AVX2
   #undef ISA_SUFFIX
   #if defined(__clang__)
@@ -86,7 +86,7 @@
   #endif
   #define ISA_SUFFIX _avx512
   #define OBLAS_AVX512
-  #include "../third-party/nanors/rs.c"
+  #include "nanors/rs.c"
   #undef OBLAS_AVX512
   #undef ISA_SUFFIX
   #if defined(__clang__)
