@@ -111,7 +111,9 @@ public class NvHTTPS extends NanoHTTPD {
                             "</root>");
         } else if (session.getUri().equals("/launch")) {
             Map<String, String> params = session.getParms();
+            String rikey = params.get("rikey");
             String rikeyid = params.get("rikeyid");
+            byte[] gcmKey = HexUtils.hexToBytes(rikey);
             byte[] iv = new byte[16];
             // 将rikeyid转换为big-endian的32位整数，并复制到iv数组的开头
             int rikeyidInt = Integer.parseInt(rikeyid);
@@ -119,7 +121,7 @@ public class NvHTTPS extends NanoHTTPD {
             iv[1] = (byte) (rikeyidInt >> 16);
             iv[2] = (byte) (rikeyidInt >> 8);
             iv[3] = (byte) rikeyidInt;
-            NativeServer.getInstance().startServer(iv, session.getRemoteIpAddress());
+            NativeServer.getInstance().startServer(gcmKey, iv, session.getRemoteIpAddress());
             String protocol = "rtsp";
 //            if (Integer.parseInt(corever) >= 1) {
 //                protocol = "rtspenc";

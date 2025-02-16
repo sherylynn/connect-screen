@@ -17,21 +17,28 @@ static std::unique_ptr<logging::deinit_t> deinit;
 static std::shared_ptr<stream::session_t> session;
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_gitee_connect_1screen_NativeServer_startServer(JNIEnv* env, jobject /* this */, jbyteArray iv, jstring peerIp) {
+Java_com_gitee_connect_1screen_NativeServer_startServer(JNIEnv* env, jobject /* this */, jbyteArray gcmKey, jbyteArray iv, jstring peerIp) {
     if (!running) {
         running = true;
         mail::man = std::make_shared<safe::mail_raw_t>();
         deinit = logging::init(0);
 
+        stream::session::launch_session_t launch_session = {};
+        stream::config_t config = {};
+
+        jbyte* gcmKeyBytes = env->GetByteArrayElements(gcmKey, nullptr);
+        jsize gcmKeyLength = env->GetArrayLength(gcmKey);
+
+        if (gcmKeyLength > 0) {
+            launch_session.gcm_key.resize(gcmKeyLength);
+            std::memcpy(launch_session.gcm_key.data(), gcmKeyBytes, gcmKeyLength);
+        }
+
+        env->ReleaseByteArrayElements(gcmKey, gcmKeyBytes, JNI_ABORT);
+
         // 获取iv数组数据
         jbyte* ivBytes = env->GetByteArrayElements(iv, nullptr);
         jsize ivLength = env->GetArrayLength(iv);
-        
-        // 获取peerIp字符串
-        const char* peerIpStr = env->GetStringUTFChars(peerIp, nullptr);
-        
-        stream::session::launch_session_t launch_session = {};
-        stream::config_t config = {};
         
         // 将iv数据复制到launch_session中
         if (ivLength > 0) {
@@ -41,6 +48,9 @@ Java_com_gitee_connect_1screen_NativeServer_startServer(JNIEnv* env, jobject /* 
         
         // 释放iv数组
         env->ReleaseByteArrayElements(iv, ivBytes, JNI_ABORT);
+
+        // 获取peerIp字符串
+        const char* peerIpStr = env->GetStringUTFChars(peerIp, nullptr);
         
         session = stream::session::alloc(config, launch_session);
         stream::session::start(*session, peerIpStr);

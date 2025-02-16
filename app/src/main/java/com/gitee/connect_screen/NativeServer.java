@@ -16,6 +16,6 @@ public class NativeServer {
         return instance;
     }
     
-    public native void startServer(byte[] iv, String peerIp);
+    public native void startServer(byte[] gcmKey, byte[] iv, String peerIp);
     public native void stopServer();
 } 
