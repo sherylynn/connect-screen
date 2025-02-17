@@ -23,7 +23,9 @@ Java_com_gitee_connect_1screen_NativeServer_startServer(JNIEnv* env, jobject /* 
         mail::man = std::make_shared<safe::mail_raw_t>();
         deinit = logging::init(0);
 
-        stream::session::launch_session_t launch_session = {};
+        stream::session::launch_session_t launch_session = {
+                .av_ping_payload = "A4AACADDA6340FB4"
+        };
         stream::config_t config = {};
 
         jbyte* gcmKeyBytes = env->GetByteArrayElements(gcmKey, nullptr);

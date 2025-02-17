@@ -1163,15 +1163,23 @@ namespace stream {
                 switch (socket_type) {
                     case socket_e::video:
                         if (message_queue) {
+                            BOOST_LOG(debug) << "添加视频会话映射 - Session ID: " << (std::holds_alternative<std::string>(session_id) ? 
+                                std::get<std::string>(session_id) : std::get<asio::ip::address>(session_id).to_string());
                             peer_to_video_session.emplace(session_id, message_queue);
                         } else {
+                            BOOST_LOG(debug) << "移除视频会话映射 - Session ID: " << (std::holds_alternative<std::string>(session_id) ? 
+                                std::get<std::string>(session_id) : std::get<asio::ip::address>(session_id).to_string());
                             peer_to_video_session.erase(session_id);
                         }
                         break;
                     case socket_e::audio:
                         if (message_queue) {
+                            BOOST_LOG(debug) << "添加音频会话映射 - Session ID: " << (std::holds_alternative<std::string>(session_id) ? 
+                                std::get<std::string>(session_id) : std::get<asio::ip::address>(session_id).to_string());
                             peer_to_audio_session.emplace(session_id, message_queue);
                         } else {
+                            BOOST_LOG(debug) << "移除音频会话映射 - Session ID: " << (std::holds_alternative<std::string>(session_id) ? 
+                                std::get<std::string>(session_id) : std::get<asio::ip::address>(session_id).to_string());
                             peer_to_audio_session.erase(session_id);
                         }
                         break;
@@ -1192,6 +1200,7 @@ namespace stream {
 
                 // No data, yet no error
                 if (ec == boost::system::errc::connection_refused || ec == boost::system::errc::connection_reset) {
+                    BOOST_LOG(debug) << "UDP connection refused/reset from "sv << peer.address().to_string() << ':' << peer.port();
                     return;
                 }
 
@@ -1206,15 +1215,21 @@ namespace stream {
                     if (it != std::end(peer_to_session)) {
                         BOOST_LOG(debug) << "RAISE: "sv << peer.address().to_string() << ':' << peer.port() << " :: " << type_str;
                         it->second->raise(peer, std::string {buf[buf_elem].data(), bytes});
+                    } else {
+                        BOOST_LOG(debug) << "No matching session found for legacy PING from "sv << peer.address().to_string() << ':' << peer.port();
                     }
                 } else if (bytes >= sizeof(SS_PING)) {
                     auto ping = (PSS_PING) buf[buf_elem].data();
 
                     // For new PING packets that include a client identifier, search by payload.
-                    auto it = peer_to_session.find(std::string {ping->payload, sizeof(ping->payload)});
+                    auto key = std::string {ping->payload, sizeof(ping->payload)};
+                    BOOST_LOG(debug) << "PING key: "sv << key;
+                    auto it = peer_to_session.find(key);
                     if (it != std::end(peer_to_session)) {
                         BOOST_LOG(debug) << "RAISE: "sv << peer.address().to_string() << ':' << peer.port() << " :: " << type_str;
                         it->second->raise(peer, std::string {buf[buf_elem].data(), bytes});
+                    } else {
+                        BOOST_LOG(debug) << "No matching session found for PING from "sv << peer.address().to_string() << ':' << peer.port();
                     }
                 }
             };
@@ -1752,10 +1767,14 @@ namespace stream {
 
         // Only allow matches on the peer address for legacy clients
         if (!(session->config.mlFeatureFlags & ML_FF_SESSION_ID_V1)) {
+            BOOST_LOG(debug) << "旧版客户端 - 根据对等端地址 " << peer.address() << " 注册消息队列";
             ref->message_queue_queue->raise(type, peer.address(), messages);
         }
-        ref->message_queue_queue->raise(type, session_id, messages);
 
+        BOOST_LOG(debug) << "根据会话 ID 注册消息队列: " << (std::holds_alternative<std::string>(session_id) ? 
+            std::get<std::string>(session_id) : std::get<asio::ip::address>(session_id).to_string());
+        ref->message_queue_queue->raise(type, session_id, messages);
+        
         auto fg = util::fail_guard([&]() {
             messages->stop();
 
