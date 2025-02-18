@@ -1038,62 +1038,74 @@ namespace stream {
 
             {
                 auto lg = server->_sessions.lock();
-
                 auto now = std::chrono::steady_clock::now();
 
+//                BOOST_LOG(debug) << "开始检查会话状态...";
+
                 KITTY_WHILE_LOOP(auto pos = std::begin(*server->_sessions), pos != std::end(*server->_sessions), {
-                    // Don't perform additional session processing if we're shutting down
+                    // Don't perform additional session processing if we're shutting down 
                     if (shutdown_event->peek() || broadcast_shutdown_event->peek()) {
+                        BOOST_LOG(info) << "检测到关闭事件,停止会话处理";
                         break;
                     }
 
                     auto session = *pos;
+                    
+                    // 添加会话状态日志
+//                    BOOST_LOG(debug) << "会话状态: " << (session->control.peer ? "已连接" : "等待连接")
+//                                   << ", 状态码: " << static_cast<int>(session->state.load(std::memory_order_acquire));
 
                     if (now > session->pingTimeout) {
                         auto address = session->control.peer ? platf::from_sockaddr((sockaddr *) &session->control.peer->address.address) : session->control.expected_peer_address;
-                        BOOST_LOG(info) << address << ": Ping Timeout"sv;
+                        BOOST_LOG(warning) << "会话 [" << address << "] Ping 超时,准备停止会话";
                         session::stop(*session);
                     }
 
                     if (session->state.load(std::memory_order_acquire) == session::state_e::STOPPING) {
+                        BOOST_LOG(info) << "会话正在停止,清理相关资源...";
                         pos = server->_sessions->erase(pos);
 
                         if (session->control.peer) {
                             {
                                 auto ptslg = server->_peer_to_session.lock();
+                                BOOST_LOG(debug) << "从映射中移除会话对等端";
                                 server->_peer_to_session->erase(session->control.peer);
                             }
 
+                            BOOST_LOG(debug) << "断开对等端连接";
                             enet_peer_disconnect_now(session->control.peer, 0);
                         }
 
+                        BOOST_LOG(debug) << "触发会话控制结束事件";
                         session->controlEnd.raise(true);
                         continue;
                     }
 
-                    // Remember if we have a session that's waiting for a peer to connect to the
-                    // control stream. This ensures the clients are properly notified even when
-                    // the app terminates before they finish connecting.
                     if (!session->control.peer) {
+                        BOOST_LOG(verbose) << "会话等待对等端连接...";
                         has_session_awaiting_peer = true;
                     } else {
+                        // 处理反馈队列
                         auto &feedback_queue = session->control.feedback_queue;
                         while (feedback_queue->peek()) {
+                            BOOST_LOG(debug) << "处理游戏手柄反馈消息";
                             auto feedback_msg = feedback_queue->pop();
-
                             send_feedback_msg(session, *feedback_msg);
                         }
 
+                        // 处理HDR队列
                         auto &hdr_queue = session->control.hdr_queue;
                         while (session->control.peer && hdr_queue->peek()) {
+                            BOOST_LOG(debug) << "处理HDR模式更新";
                             auto hdr_info = hdr_queue->pop();
-
                             send_hdr_mode(session, std::move(hdr_info));
                         }
                     }
 
                     ++pos;
                 })
+                
+//                BOOST_LOG(debug) << "会话状态检查完成, 等待对等端连接的会话: " << (has_session_awaiting_peer ? "有" : "无");
             }
 
             // Don't break until any pending sessions either expire or connect
@@ -1818,10 +1830,11 @@ namespace stream {
         return -1;
     }
 
+    safe::mail_raw_t::queue_t<video::packet_t> videoPackets;
     void videoThread(session_t *session) {
-        auto fg = util::fail_guard([&]() {
-            session::stop(*session);
-        });
+//        auto fg = util::fail_guard([&]() {
+//            session::stop(*session);
+//        });
 
         while_starting_do_nothing(session->state);
 
@@ -1835,14 +1848,15 @@ namespace stream {
         auto address = session->video.peer.address();
         session->video.qos = platf::enable_socket_qos(ref->video_sock.native_handle(), address, session->video.peer.port(), platf::qos_data_type_e::video, session->config.videoQosType != 0);
 
-//        BOOST_LOG(debug) << "Start capturing Video"sv;
+        videoPackets = mail::man->queue<video::packet_t>(mail::video_packets);
+       BOOST_LOG(debug) << "Start capturing Video"sv;
 //        video::capture(session->mail, session->config.monitor, session);
     }
 
     void audioThread(session_t *session) {
-        auto fg = util::fail_guard([&]() {
-            session::stop(*session);
-        });
+//        auto fg = util::fail_guard([&]() {
+//            session::stop(*session);
+//        });
 
         while_starting_do_nothing(session->state);
 
@@ -1868,6 +1882,7 @@ namespace stream {
         }
 
         void stop(session_t &session) {
+            BOOST_LOG(debug) << "Stopping session..."sv;
             while_starting_do_nothing(session.state);
             auto expected = state_e::RUNNING;
             auto already_stopping = !session.state.compare_exchange_strong(expected, state_e::STOPPING);
@@ -1926,6 +1941,7 @@ namespace stream {
         }
 
         int start(session_t &session, const std::string &addr_string) {
+            session.state.store(state_e::STARTING, std::memory_order_relaxed);
 //            session.input = input::alloc(session.mail);
 
             session.broadcast_ref = broadcast.ref();
