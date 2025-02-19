@@ -9,12 +9,18 @@ import android.media.projection.MediaProjectionManager;
 
 import com.gitee.connect_screen.MainActivity;
 import com.gitee.connect_screen.MediaProjectionService;
+import com.gitee.connect_screen.NativeServer;
 import com.gitee.connect_screen.State;
 
 import java.nio.ByteBuffer;
 
 public class ProjectViaMoonlight implements Job {
+    private final NativeServer nativeServer;
     private boolean mediaProjectionRequested;
+
+    public ProjectViaMoonlight(NativeServer nativeServer) {
+        this.nativeServer = nativeServer;
+    }
 
     @Override
     public void start() throws YieldException {
@@ -46,6 +52,7 @@ public class ProjectViaMoonlight implements Job {
                 
                 // 开启编码处理线程
                 new Thread(() -> {
+                    int frameIndex = 0;
                     while (!Thread.interrupted()) {
                         // 获取输出buffer
                         int outputBufferId = encoder.dequeueOutputBuffer(bufferInfo, -1);
@@ -61,6 +68,7 @@ public class ProjectViaMoonlight implements Job {
                                 outputBuffer.get(data);
                                 
                                 android.util.Log.i("ProjectViaMoonlight", "收到H264帧: " + data.length + "字节, " + (isIdrFrame ? "IDR帧" : "非IDR帧"));
+                                nativeServer.postFrame(data, isIdrFrame, frameIndex++);
                             }
                             
                             // 释放buffer

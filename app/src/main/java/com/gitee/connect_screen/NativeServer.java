@@ -20,11 +20,12 @@ public class NativeServer {
     
     public native void startServer(byte[] gcmKey, byte[] iv, String peerIp);
     public native void stopServer();
+    public native void postFrame(byte[] frameData, boolean isIdr, long frameIndex);
     
     public void onMoonlightConnected() {
         android.util.Log.i("NativeServer", "Moonlight 客户端已连接");
         new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
-            State.startNewJob(new ProjectViaMoonlight());
+            State.startNewJob(new ProjectViaMoonlight(this));
         });
     }
 } 
