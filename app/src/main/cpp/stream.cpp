@@ -1941,7 +1941,6 @@ namespace stream {
         }
 
         int start(session_t &session, const std::string &addr_string) {
-            session.state.store(state_e::STARTING, std::memory_order_relaxed);
 //            session.input = input::alloc(session.mail);
 
             session.broadcast_ref = broadcast.ref();

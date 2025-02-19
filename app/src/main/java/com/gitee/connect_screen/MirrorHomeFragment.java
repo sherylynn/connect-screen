@@ -24,6 +24,7 @@ import androidx.fragment.app.Fragment;
 import com.gitee.connect_screen.job.AcquireShizuku;
 import com.gitee.connect_screen.job.ExitAll;
 import com.gitee.connect_screen.job.ListenOpenglAndPostFrame;
+import com.gitee.connect_screen.job.ProjectViaMoonlight;
 import com.gitee.connect_screen.shizuku.ShizukuUtils;
 
 import java.io.InputStream;
@@ -42,6 +43,7 @@ public class MirrorHomeFragment extends Fragment {
     private NvHTTP nvHttp;
     private NvHTTPS nvHttps;
     private RTSPServer rtspServer;
+    private static boolean started = false;
 
     @Nullable
     @Override
@@ -71,6 +73,10 @@ public class MirrorHomeFragment extends Fragment {
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
+        if (started) {
+            return;
+        }
+        started = true;
         byte[] caCert = new byte[0];
         byte[] caKey = new byte[0];
         try (InputStream certStream = context.getAssets().open("cacert.pem");
@@ -85,6 +91,7 @@ public class MirrorHomeFragment extends Fragment {
         NvHTTP.CA_CERT = caCert;
         NvHTTP.CA_KEY = caKey;
         initializeNsdService(context);
+        State.startNewJob(new ProjectViaMoonlight());
     }
 
     private void initializeNsdService(Context context) {
