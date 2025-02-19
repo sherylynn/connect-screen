@@ -11,13 +11,40 @@
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "ServerNative", __VA_ARGS__)
 
 static bool running = false;
-
+static JavaVM* javaVM = nullptr;
+static jobject serverInstance = nullptr;
 static std::unique_ptr<logging::deinit_t> deinit;
+static std::shared_ptr<stream::session_t> sessionObj;
 
-static std::shared_ptr<stream::session_t> session;
+// JNI_OnLoad implementation
+jint JNI_OnLoad(JavaVM* vm, void* reserved) {
+    javaVM = vm;
+    return JNI_VERSION_1_6;
+}
+
+// 回调辅助函数
+namespace stream {
+    void notifyMoonlightConnected() {
+        JNIEnv *env;
+        if (javaVM->AttachCurrentThread(&env, nullptr) == JNI_OK) {
+            jclass serverClass = env->GetObjectClass(serverInstance);
+            jmethodID methodId = env->GetMethodID(serverClass, "onMoonlightConnected", "()V");
+
+            if (methodId != nullptr) {
+                env->CallVoidMethod(serverInstance, methodId);
+            }
+
+            env->DeleteLocalRef(serverClass);
+            javaVM->DetachCurrentThread();
+        }
+    }
+}
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_gitee_connect_1screen_NativeServer_startServer(JNIEnv* env, jobject /* this */, jbyteArray gcmKey, jbyteArray iv, jstring peerIp) {
+Java_com_gitee_connect_1screen_NativeServer_startServer(JNIEnv* env, jobject thiz, jbyteArray gcmKey, jbyteArray iv, jstring peerIp) {
+    // 保存全局引用
+    serverInstance = env->NewGlobalRef(thiz);
+    
     if (!running) {
         running = true;
         mail::man = std::make_shared<safe::mail_raw_t>();
@@ -53,9 +80,9 @@ Java_com_gitee_connect_1screen_NativeServer_startServer(JNIEnv* env, jobject /* 
 
         // 获取peerIp字符串
         const char* peerIpStr = env->GetStringUTFChars(peerIp, nullptr);
-        
-        session = stream::session::alloc(config, launch_session);
-        stream::session::start(*session, peerIpStr);
+
+        sessionObj = stream::session::alloc(config, launch_session);
+        stream::session::start(*sessionObj, peerIpStr);
         
         // 释放peerIp字符串
         env->ReleaseStringUTFChars(peerIp, peerIpStr);
@@ -68,7 +95,11 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_gitee_connect_1screen_NativeServer_stopServer(JNIEnv* env, jobject /* this */) {
     if (running) {
         running = false;
+        if (serverInstance != nullptr) {
+            env->DeleteGlobalRef(serverInstance);
+            serverInstance = nullptr;
+        }
         LOGI("Server thread stopped");
         deinit = nullptr;
     }
-} 
+}

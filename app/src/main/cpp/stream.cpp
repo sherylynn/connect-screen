@@ -570,6 +570,7 @@ namespace stream {
                 }
                     break;
                 case ENET_EVENT_TYPE_CONNECT:
+                    notifyMoonlightConnected();
                     BOOST_LOG(info) << "CLIENT CONNECTED"sv;
                     break;
                 case ENET_EVENT_TYPE_DISCONNECT:
