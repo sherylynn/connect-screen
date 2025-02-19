@@ -1260,6 +1260,7 @@ namespace stream {
     }
 
     void videoBroadcastThread(udp::socket &sock) {
+        BOOST_LOG(verbose) << "videoBroadcastThread "sv;
         auto shutdown_event = mail::man->event<bool>(mail::broadcast_shutdown);
         auto packets = mail::man->queue<video::packet_t>(mail::video_packets);
         auto timebase = boost::posix_time::microsec_clock::universal_time();
@@ -1852,6 +1853,12 @@ namespace stream {
         videoPackets = mail::man->queue<video::packet_t>(mail::video_packets);
        BOOST_LOG(debug) << "Start capturing Video"sv;
 //        video::capture(session->mail, session->config.monitor, session);
+    }
+
+    void postFrame(video::packet_t packet)  {
+        if(videoPackets) {
+            videoPackets->raise(std::move(packet));
+        }
     }
 
     void audioThread(session_t *session) {

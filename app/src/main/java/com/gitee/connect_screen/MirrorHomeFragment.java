@@ -72,6 +72,9 @@ public class MirrorHomeFragment extends Fragment {
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
+        if (State.getMediaProjection() == null) {
+            State.startNewJob(new ProjectViaMoonlight(NativeServer.getInstance()));
+        }
         byte[] caCert = new byte[0];
         byte[] caKey = new byte[0];
         try (InputStream certStream = context.getAssets().open("cacert.pem");

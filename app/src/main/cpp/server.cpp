@@ -119,14 +119,14 @@ Java_com_gitee_connect_1screen_NativeServer_postFrame(
 
     // 释放Java字节数组
     env->ReleaseByteArrayElements(frameData, bytes, JNI_ABORT);
-
-    // 创建packet_raw_generic对象
     auto packet = std::make_unique<video::packet_raw_generic>(
-        std::move(frame_vector),
-        frameIndex,
-        isIdr
+            std::move(frame_vector),
+            frameIndex,
+            isIdr
     );
+    packet->channel_data = &sessionObj;
 
     // TODO: 在这里处理packet，比如发送到视频流
     LOGI("received postFrame");
+    stream::postFrame(std::move(packet));
 }
