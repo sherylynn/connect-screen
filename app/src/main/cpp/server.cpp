@@ -22,6 +22,93 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
     return JNI_VERSION_1_6;
 }
 
+static stream::config_t create_config(const std::string& input) {
+    stream::config_t config = {};
+
+    // 设置默认值
+    std::unordered_map<std::string_view, std::string_view> args = {
+            {"x-nv-video[0].encoderCscMode", "0"},
+            {"x-nv-vqos[0].bitStreamFormat", "0"},
+            {"x-nv-video[0].dynamicRangeMode", "0"},
+            {"x-nv-aqos.packetDuration", "5"},
+            {"x-nv-general.useReliableUdp", "1"},
+            {"x-nv-vqos[0].fec.minRequiredFecPackets", "0"},
+            {"x-nv-general.featureFlags", "135"},
+            {"x-ml-general.featureFlags", "0"},
+            {"x-nv-vqos[0].qosTrafficType", "5"},
+            {"x-nv-aqos.qosTrafficType", "4"},
+            {"x-ml-video.configuredBitrateKbps", "0"},
+            {"x-ss-general.encryptionEnabled", "0"},
+            {"x-ss-video[0].chromaSamplingType", "0"},
+            {"x-ss-video[0].intraRefresh", "0"},
+            {"x-nv-audio.surround.numChannels", "2"},
+            {"x-nv-audio.surround.channelMask", "3"},
+            {"x-nv-audio.surround.AudioQuality", "0"},
+            {"x-nv-video[0].packetSize", "1392"},
+            {"x-nv-video[0].clientViewportHt", "1080"},
+            {"x-nv-video[0].clientViewportWd", "1920"},
+            {"x-nv-video[0].maxFPS", "60"},
+            {"x-nv-vqos[0].bw.maximumBitrateKbps", "10000"},
+            {"x-nv-video[0].videoEncoderSlicesPerFrame", "1"},
+            {"x-nv-video[0].maxNumReferenceFrames", "0"}
+    };
+
+    // 解析输入字符串
+    std::istringstream iss(input);
+    std::string line;
+    while (std::getline(iss, line)) {
+        auto type = line.substr(0, 2);
+        if (type == "a=") {
+            auto pos = line.find(':');
+            if (pos != std::string::npos) {
+                auto name = line.substr(2, pos - 2);
+                auto val = line.substr(pos + 1);
+                if (!val.empty() && val.back() == ' ') {
+                    val.pop_back();
+                }
+                args[name] = val;
+            }
+        }
+    }
+
+    // 设置配置参数
+    try {
+        config.controlProtocolType = std::stoi(std::string(args.at("x-nv-general.useReliableUdp")));
+        config.minRequiredFecPackets = std::stoi(std::string(args.at("x-nv-vqos[0].fec.minRequiredFecPackets")));
+        config.mlFeatureFlags = std::stoi(std::string(args.at("x-ml-general.featureFlags")));
+        config.audioQosType = std::stoi(std::string(args.at("x-nv-aqos.qosTrafficType")));
+        config.videoQosType = std::stoi(std::string(args.at("x-nv-vqos[0].qosTrafficType")));
+
+        // 设置显示器相关参数
+        config.monitor.encoderCscMode = std::stoi(std::string(args.at("x-nv-video[0].encoderCscMode")));
+        config.monitor.videoFormat = std::stoi(std::string(args.at("x-nv-vqos[0].bitStreamFormat")));
+        config.monitor.dynamicRange = std::stoi(std::string(args.at("x-nv-video[0].dynamicRangeMode")));
+        config.monitor.chromaSamplingType = std::stoi(std::string(args.at("x-ss-video[0].chromaSamplingType")));
+        config.monitor.enableIntraRefresh = std::stoi(std::string(args.at("x-ss-video[0].intraRefresh")));
+
+        // 添加音频相关配置
+        config.audio.channels = std::stoi(std::string(args.at("x-nv-audio.surround.numChannels")));
+        config.audio.mask = std::stoi(std::string(args.at("x-nv-audio.surround.channelMask")));
+        config.audio.packetDuration = std::stoi(std::string(args.at("x-nv-aqos.packetDuration")));
+        config.audio.flags[audio::config_t::HIGH_QUALITY] = 
+            std::stoi(std::string(args.at("x-nv-audio.surround.AudioQuality")));
+
+        // 添加视频相关配置
+        config.packetsize = std::stoi(std::string(args.at("x-nv-video[0].packetSize")));
+        config.monitor.height = std::stoi(std::string(args.at("x-nv-video[0].clientViewportHt")));
+        config.monitor.width = std::stoi(std::string(args.at("x-nv-video[0].clientViewportWd")));
+        config.monitor.framerate = std::stoi(std::string(args.at("x-nv-video[0].maxFPS")));
+        config.monitor.bitrate = std::stoi(std::string(args.at("x-nv-vqos[0].bw.maximumBitrateKbps")));
+        config.monitor.slicesPerFrame = std::stoi(std::string(args.at("x-nv-video[0].videoEncoderSlicesPerFrame")));
+        config.monitor.numRefFrames = std::stoi(std::string(args.at("x-nv-video[0].maxNumReferenceFrames")));
+
+    } catch (const std::exception& e) {
+        LOGE("Error parsing config: %s", e.what());
+    }
+
+    return config;
+}
+
 // 回调辅助函数
 namespace stream {
     void notifyMoonlightConnected() {
@@ -41,7 +128,7 @@ namespace stream {
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_gitee_connect_1screen_NativeServer_startServer(JNIEnv* env, jobject thiz, jbyteArray gcmKey, jbyteArray iv, jstring peerIp) {
+Java_com_gitee_connect_1screen_NativeServer_startServer(JNIEnv* env, jobject thiz, jbyteArray gcmKey, jbyteArray iv, jstring peerIp, jstring configStr) {
     // 保存全局引用
     serverInstance = env->NewGlobalRef(thiz);
     
@@ -52,7 +139,11 @@ Java_com_gitee_connect_1screen_NativeServer_startServer(JNIEnv* env, jobject thi
         stream::session::launch_session_t launch_session = {
                 .av_ping_payload = "A4AACADDA6340FB4"
         };
-        stream::config_t config = {};
+        
+        // 获取configStr并转换为config
+        const char* configChars = env->GetStringUTFChars(configStr, nullptr);
+        stream::config_t config = create_config(configChars);
+        env->ReleaseStringUTFChars(configStr, configChars);
 
         jbyte* gcmKeyBytes = env->GetByteArrayElements(gcmKey, nullptr);
         jsize gcmKeyLength = env->GetArrayLength(gcmKey);

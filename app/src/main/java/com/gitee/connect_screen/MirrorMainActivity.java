@@ -199,7 +199,7 @@ public class MirrorMainActivity extends AppCompatActivity implements IMainActivi
             NvHTTP.ADDRESS = addr;
             nvHttp = new NvHTTP(addr);
             nvHttps = new NvHTTPS(nativeServer);
-            rtspServer = new RTSPServer();
+            rtspServer = new RTSPServer(nativeServer);
             try {
                 nvHttp.start();
                 nvHttps.start();

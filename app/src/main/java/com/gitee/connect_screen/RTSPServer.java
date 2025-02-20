@@ -8,17 +8,18 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.io.BufferedOutputStream;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class RTSPServer extends Thread {
     private static final String TAG = "RTSPServer";
     private final int port;
+    private final NativeServer nativeServer;
     private volatile boolean isRunning;
     private ServerSocket serverSocket;
     private final ConcurrentHashMap<String, ClientHandler> clientHandlers;
 
-    public RTSPServer() {
+    public RTSPServer(NativeServer nativeServer) {
+        this.nativeServer = nativeServer;
         this.port = NvHTTP.RTSP_PORT;
         this.clientHandlers = new ConcurrentHashMap<>();
         this.isRunning = true;
@@ -88,7 +89,7 @@ public class RTSPServer extends Thread {
                 }
                 
                 if (requestBuilder.length() > 0) {
-                    handleRTSPRequest(requestBuilder.toString());
+                    handleRTSPRequest(requestBuilder.toString(), reader);
                 }
                 
                 // 处理完请求后直接清理并关闭连接
@@ -103,10 +104,15 @@ public class RTSPServer extends Thread {
             }
         }
 
-        private void handleRTSPRequest(String request) {
+        private void handleRTSPRequest(String request, BufferedReader reader) throws IOException {
             Log.d(TAG, "开始处理 RTSP 请求: " + request);
             
-            String[] lines = request.split("\r\n");
+            // 分离请求头和请求体
+            String[] parts = request.split("\r\n\r\n", 2);
+            String headers = parts[0];
+            String body = parts.length > 1 ? parts[1] : null;
+            
+            String[] lines = headers.split("\r\n");
             if (lines.length == 0) {
                 Log.e(TAG, "无效的 RTSP 请求: 请求为空");
                 cleanup();
@@ -127,6 +133,7 @@ public class RTSPServer extends Thread {
             
             // 解析请求头
             int cseq = -1;
+            int contentLength = -1;
             try {
                 for (String line : lines) {
                     if (line.startsWith("CSeq:")) {
@@ -135,7 +142,29 @@ public class RTSPServer extends Thread {
                     } else if (line.startsWith("Session:")) {
                         session = line.substring(9).trim().split(";")[0];
                         Log.d(TAG, "解析到 Session: " + session);
+                    } else if (line.toLowerCase().startsWith("content-length:")) {
+                        contentLength = Integer.parseInt(line.substring(15).trim());
+                        Log.d(TAG, "解析到 Content-Length: " + contentLength);
                     }
+                }
+
+                // 如果有 Content-Length，读取请求体
+                if (contentLength > 0) {
+                    StringBuilder bodyBuilder = new StringBuilder();
+                    char[] buffer = new char[1024];
+                    int totalBytesRead = 0;
+                    
+                    while (totalBytesRead < contentLength) {
+                        int bytesRead = reader.read(buffer, 0, Math.min(buffer.length, contentLength - totalBytesRead));
+                        if (bytesRead == -1) {
+                            break;
+                        }
+                        bodyBuilder.append(buffer, 0, bytesRead);
+                        totalBytesRead += bytesRead;
+                    }
+                    
+                    body = bodyBuilder.toString();
+                    Log.d(TAG, "读取到请求体: " + body);
                 }
                 
                 if (cseq == -1) {
@@ -178,6 +207,13 @@ public class RTSPServer extends Thread {
                         } else if (uri.contains("control")) {
                             response.append("Transport: server_port=47999").append(CRLF);
                             response.append("X-SS-Connect-Data: 2207506894").append(CRLF);
+                        }
+                        break;
+
+                    case "ANNOUNCE":
+                        if (body != null && contentLength > 0) {
+                            Log.d(TAG, "收到 ANNOUNCE 请求体:\n" + body);
+                            nativeServer.startServer(nativeServer.gcmKey, nativeServer.iv, nativeServer.peerIp, body);
                         }
                         break;
                 }

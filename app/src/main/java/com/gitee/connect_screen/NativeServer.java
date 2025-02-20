@@ -8,7 +8,10 @@ public class NativeServer {
     }
     
     private static NativeServer instance;
-    
+    public byte[] gcmKey;
+    public byte[] iv;
+    public String peerIp;
+
     private NativeServer() {}
     
     public static NativeServer getInstance() {
@@ -18,7 +21,7 @@ public class NativeServer {
         return instance;
     }
     
-    public native void startServer(byte[] gcmKey, byte[] iv, String peerIp);
+    public native void startServer(byte[] gcmKey, byte[] iv, String peerIp, String configStr);
     public native void stopServer();
     public native void postFrame(byte[] frameData, boolean isIdr, long frameIndex);
     public native int ping();
