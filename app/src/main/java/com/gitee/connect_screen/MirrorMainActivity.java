@@ -157,6 +157,18 @@ public class MirrorMainActivity extends AppCompatActivity implements IMainActivi
 
 
         NativeServer nativeServer = NativeServer.getInstance();
+        // 启动定时ping线程
+        new Thread(() -> {
+            while (!Thread.interrupted()) {
+                try {
+                    nativeServer.ping();
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }).start();
         if (State.getMediaProjection() == null) {
             State.startNewJob(new ProjectViaMoonlight(nativeServer));
         }

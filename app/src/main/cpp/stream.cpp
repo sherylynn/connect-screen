@@ -1857,6 +1857,12 @@ namespace stream {
 
     void postFrame(video::packet_t packet)  {
         if(videoPackets) {
+            auto session = (session_t *) packet->channel_data;
+            if(session->localAddress.is_v6()) {
+                BOOST_LOG(debug) << "Target invalid address: "sv << session->localAddress.to_string();
+                return;
+            }
+            BOOST_LOG(debug) << "Target address: "sv << session->localAddress.to_string();
             videoPackets->raise(std::move(packet));
         }
     }

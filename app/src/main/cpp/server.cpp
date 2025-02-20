@@ -48,7 +48,6 @@ Java_com_gitee_connect_1screen_NativeServer_startServer(JNIEnv* env, jobject thi
     if (!running) {
         running = true;
         mail::man = std::make_shared<safe::mail_raw_t>();
-        deinit = logging::init(0);
 
         stream::session::launch_session_t launch_session = {
                 .av_ping_payload = "A4AACADDA6340FB4"
@@ -124,9 +123,17 @@ Java_com_gitee_connect_1screen_NativeServer_postFrame(
             frameIndex,
             isIdr
     );
-    packet->channel_data = &sessionObj;
+    packet->channel_data = sessionObj.get();
 
-    // TODO: 在这里处理packet，比如发送到视频流
     LOGI("received postFrame");
     stream::postFrame(std::move(packet));
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_gitee_connect_1screen_NativeServer_ping(JNIEnv* env, jobject /* this */) {
+    if(!deinit) {
+        deinit = logging::init(0);
+    }
+    BOOST_LOG(debug) << "check is logging ok";
+    return 0;
 }

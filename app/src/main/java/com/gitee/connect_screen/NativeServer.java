@@ -21,6 +21,7 @@ public class NativeServer {
     public native void startServer(byte[] gcmKey, byte[] iv, String peerIp);
     public native void stopServer();
     public native void postFrame(byte[] frameData, boolean isIdr, long frameIndex);
+    public native int ping();
     
     public void onMoonlightConnected() {
         android.util.Log.i("NativeServer", "Moonlight 客户端已连接");
