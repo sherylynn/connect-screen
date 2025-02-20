@@ -38,11 +38,6 @@ import javax.jmdns.ServiceInfo;
 import java.io.IOException;
 
 public class MirrorHomeFragment extends Fragment {
-    private JmDNS jmdns;
-    private ServiceInfo serviceInfo;
-    private NvHTTP nvHttp;
-    private NvHTTPS nvHttps;
-    private RTSPServer rtspServer;
 
     @Nullable
     @Override
@@ -67,101 +62,5 @@ public class MirrorHomeFragment extends Fragment {
         });
 
         return view;
-    }
-
-    @Override
-    public void onAttach(Context context) {
-        super.onAttach(context);
-        if (State.getMediaProjection() == null) {
-            State.startNewJob(new ProjectViaMoonlight(NativeServer.getInstance()));
-        }
-        byte[] caCert = new byte[0];
-        byte[] caKey = new byte[0];
-        try (InputStream certStream = context.getAssets().open("cacert.pem");
-             InputStream keyStream = context.getAssets().open("cakey.pem")) {
-            caCert = new byte[certStream.available()];
-            caKey = new byte[keyStream.available()];
-            certStream.read(caCert);
-            keyStream.read(caKey);
-        } catch (IOException e) {
-            android.util.Log.e("MirrorHomeFragment", "无法读取证书文件", e);
-        }
-        NvHTTP.CA_CERT = caCert;
-        NvHTTP.CA_KEY = caKey;
-        initializeNsdService(context);
-    }
-
-    private void initializeNsdService(Context context) {
-        new Thread(() -> {
-            try {
-                InetAddress addr = getWifiIpAddress(context);
-                if (addr == null) {
-                    android.util.Log.e("MirrorHomeFragment", "无法获取WiFi IP地址");
-                    return;
-                }
-                android.util.Log.i("MirrorHomeFragment", "获取到WiFi IP地址: " + addr.getHostAddress());
-
-                // 启动 HTTP 服务器
-                NvHTTP.ADDRESS = addr;
-                nvHttp = new NvHTTP(addr);
-                nvHttps = new NvHTTPS();
-                rtspServer = new RTSPServer();
-                try {
-                    nvHttp.start();
-                    nvHttps.start();
-                    rtspServer.start();
-                    android.util.Log.i("MirrorHomeFragment", "NvHTTP服务器启动成功，端口: " + NvHTTP.HTTP_PORT);
-                } catch (IOException e) {
-                    android.util.Log.e("MirrorHomeFragment", "NvHTTP服务器启动失败", e);
-                    return;
-                }
-
-                jmdns = JmDNS.create(addr);
-                serviceInfo = ServiceInfo.create(
-                    "_nvstream._tcp.local.",
-                    "MirrorScreen",
-                    NvHTTP.HTTP_PORT,
-                    "ConnectScreen"
-                );
-                
-                jmdns.registerService(serviceInfo);
-                android.util.Log.i("MirrorHomeFragment", "JmDNS服务注册成功");
-            } catch (IOException e) {
-                android.util.Log.e("MirrorHomeFragment", "初始化网络服务失败", e);
-            }
-        }).start();
-    }
-
-    @Override
-    public void onDestroy() {
-        if (nvHttp != null) {
-            nvHttp.stop();
-        }
-        if (jmdns != null) {
-            try {
-                jmdns.unregisterService(serviceInfo);
-                jmdns.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        super.onDestroy();
-    }
-
-    public static InetAddress getWifiIpAddress(Context context) throws UnknownHostException {
-        WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-        if (wifiManager == null || !wifiManager.isWifiEnabled()) {
-            return null;
-        }
-
-        int ipAddress = wifiManager.getConnectionInfo().getIpAddress();
-        // Convert little-endian to big-endian if needed
-        byte[] bytes = new byte[4];
-        bytes[0] = (byte) (ipAddress & 0xFF);
-        bytes[1] = (byte) ((ipAddress >> 8) & 0xFF);
-        bytes[2] = (byte) ((ipAddress >> 16) & 0xFF);
-        bytes[3] = (byte) ((ipAddress >> 24) & 0xFF);
-
-        return InetAddress.getByAddress(bytes);
     }
 }

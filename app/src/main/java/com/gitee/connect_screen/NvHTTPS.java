@@ -25,8 +25,11 @@ import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 
 public class NvHTTPS extends NanoHTTPD {
-    public NvHTTPS()  {
+    private final NativeServer nativeServer;
+
+    public NvHTTPS(NativeServer nativeServer)  {
         super(NvHTTP.HTTPS_PORT);
+        this.nativeServer = nativeServer;
         SSLContext sslContext = createSSLContext();
 
         // 配置 SSL 参数
@@ -121,7 +124,7 @@ public class NvHTTPS extends NanoHTTPD {
             iv[1] = (byte) (rikeyidInt >> 16);
             iv[2] = (byte) (rikeyidInt >> 8);
             iv[3] = (byte) rikeyidInt;
-            NativeServer.getInstance().startServer(gcmKey, iv, session.getRemoteIpAddress());
+            nativeServer.startServer(gcmKey, iv, session.getRemoteIpAddress());
             String protocol = "rtsp";
 //            if (Integer.parseInt(corever) >= 1) {
 //                protocol = "rtspenc";

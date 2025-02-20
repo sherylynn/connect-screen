@@ -13,6 +13,7 @@ import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbManager;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Build;
 import android.os.Process;
@@ -33,11 +34,19 @@ import com.gitee.connect_screen.job.InputDeviceMonitor;
 import com.gitee.connect_screen.job.MirrorDisplayMonitor;
 import com.gitee.connect_screen.job.ProjectViaDisplaylink;
 import com.gitee.connect_screen.job.MirrorDisplaylinkMonitor;
+import com.gitee.connect_screen.job.ProjectViaMoonlight;
 import com.gitee.connect_screen.job.VirtualDisplayArgs;
 import com.gitee.connect_screen.shizuku.ServiceUtils;
 import com.gitee.connect_screen.shizuku.ShizukuUtils;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.ref.WeakReference;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
+import javax.jmdns.JmDNS;
+import javax.jmdns.ServiceInfo;
 
 import dev.rikka.tools.refine.Refine;
 import rikka.shizuku.Shizuku;
@@ -53,6 +62,11 @@ public class MirrorMainActivity extends AppCompatActivity implements IMainActivi
     // 添加时间戳和延迟常量
     private static final long MONITOR_INIT_DELAY = 3000; // 5秒延迟
     private long lastCheckTime = 0;
+    private JmDNS jmdns;
+    private ServiceInfo serviceInfo;
+    private NvHTTP nvHttp;
+    private NvHTTPS nvHttps;
+    private RTSPServer rtspServer;
 
     private final BroadcastReceiver usbPermissionReceiver = new BroadcastReceiver() {
         @Override
@@ -140,8 +154,81 @@ public class MirrorMainActivity extends AppCompatActivity implements IMainActivi
         lastCheckTime = System.currentTimeMillis();
         MirrorDisplayMonitor.init(displayManager);
         MirrorDisplaylinkMonitor.init(this);
+
+
+        NativeServer nativeServer = NativeServer.getInstance();
+        if (State.getMediaProjection() == null) {
+            State.startNewJob(new ProjectViaMoonlight(nativeServer));
+        }
+        byte[] caCert = new byte[0];
+        byte[] caKey = new byte[0];
+        Context context = getApplicationContext();
+        try (InputStream certStream = context.getAssets().open("cacert.pem");
+             InputStream keyStream = context.getAssets().open("cakey.pem")) {
+            caCert = new byte[certStream.available()];
+            caKey = new byte[keyStream.available()];
+            certStream.read(caCert);
+            keyStream.read(caKey);
+        } catch (IOException e) {
+            android.util.Log.e("MirrorHomeFragment", "无法读取证书文件", e);
+        }
+        NvHTTP.CA_CERT = caCert;
+        NvHTTP.CA_KEY = caKey;
+
+        try {
+            InetAddress addr = getWifiIpAddress(context);
+            if (addr == null) {
+                android.util.Log.e("MirrorHomeFragment", "无法获取WiFi IP地址");
+                return;
+            }
+            android.util.Log.i("MirrorHomeFragment", "获取到WiFi IP地址: " + addr.getHostAddress());
+
+            // 启动 HTTP 服务器
+            NvHTTP.ADDRESS = addr;
+            nvHttp = new NvHTTP(addr);
+            nvHttps = new NvHTTPS(nativeServer);
+            rtspServer = new RTSPServer();
+            try {
+                nvHttp.start();
+                nvHttps.start();
+                rtspServer.start();
+                android.util.Log.i("MirrorHomeFragment", "NvHTTP服务器启动成功，端口: " + NvHTTP.HTTP_PORT);
+            } catch (IOException e) {
+                android.util.Log.e("MirrorHomeFragment", "NvHTTP服务器启动失败", e);
+                return;
+            }
+
+            jmdns = JmDNS.create(addr);
+            serviceInfo = ServiceInfo.create(
+                    "_nvstream._tcp.local.",
+                    "MirrorScreen",
+                    NvHTTP.HTTP_PORT,
+                    "ConnectScreen"
+            );
+
+            jmdns.registerService(serviceInfo);
+            android.util.Log.i("MirrorHomeFragment", "JmDNS服务注册成功");
+        } catch (IOException e) {
+            android.util.Log.e("MirrorHomeFragment", "初始化网络服务失败", e);
+        }
     }
 
+    public static InetAddress getWifiIpAddress(Context context) throws UnknownHostException {
+        WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        if (wifiManager == null || !wifiManager.isWifiEnabled()) {
+            return null;
+        }
+
+        int ipAddress = wifiManager.getConnectionInfo().getIpAddress();
+        // Convert little-endian to big-endian if needed
+        byte[] bytes = new byte[4];
+        bytes[0] = (byte) (ipAddress & 0xFF);
+        bytes[1] = (byte) ((ipAddress >> 8) & 0xFF);
+        bytes[2] = (byte) ((ipAddress >> 16) & 0xFF);
+        bytes[3] = (byte) ((ipAddress >> 24) & 0xFF);
+
+        return InetAddress.getByAddress(bytes);
+    }
 
     @Override
     protected void onResume() {
@@ -167,6 +254,19 @@ public class MirrorMainActivity extends AppCompatActivity implements IMainActivi
 
         State.currentActivity = null;
         unregisterReceiver(usbPermissionReceiver);
+
+
+        if (nvHttp != null) {
+            nvHttp.stop();
+        }
+        if (jmdns != null) {
+            try {
+                jmdns.unregisterService(serviceInfo);
+                jmdns.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
     
     @Override
