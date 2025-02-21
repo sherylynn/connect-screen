@@ -482,12 +482,14 @@ namespace stream {
             // Only fall back to IP address matching for clients without session ID support.
             if (session_p->config.mlFeatureFlags & ML_FF_SESSION_ID_V1) {
                 if (session_p->control.connect_data != connect_data) {
+                    BOOST_LOG(debug) << "Session connect data mismatch: expected " << session_p->control.connect_data << ", got " << connect_data;
                     continue;
                 } else {
                     BOOST_LOG(debug) << "Initialized new control stream session by connect data match [v2]"sv;
                 }
             } else {
                 if (session_p->control.expected_peer_address != peer_addr) {
+                    BOOST_LOG(debug) << "Session peer address mismatch: expected " << session_p->control.expected_peer_address << ", got " << peer_addr;
                     continue;
                 } else {
                     BOOST_LOG(debug) << "Initialized new control stream session by IP address match [v1]"sv;

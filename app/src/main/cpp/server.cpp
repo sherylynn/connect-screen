@@ -152,6 +152,7 @@ Java_com_gitee_connect_1screen_NativeServer_startServer(JNIEnv* env, jobject thi
             launch_session.gcm_key.resize(gcmKeyLength);
             std::memcpy(launch_session.gcm_key.data(), gcmKeyBytes, gcmKeyLength);
         }
+        launch_session.control_connect_data = 2207506894;
 
         env->ReleaseByteArrayElements(gcmKey, gcmKeyBytes, JNI_ABORT);
 
