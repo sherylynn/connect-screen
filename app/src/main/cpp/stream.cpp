@@ -1359,12 +1359,18 @@ namespace stream {
 
             // Compute the number of FEC blocks needed for this frame using the block size and max shards
             auto max_data_per_fec_block = max_data_shards_per_fec_block * blocksize;
+
             auto fec_blocks_needed = (payload.size() + (max_data_per_fec_block - 1)) / max_data_per_fec_block;
 
-            // If the number of FEC blocks needed exceeds the protocol limit, turn off FEC for this frame.
-            // For normal FEC percentages, this should only happen for enormous frames (over 800 packets at 20%).
+
+            // 如果FEC块数量超出限制,添加更详细的警告信息
             if (fec_blocks_needed > MAX_FEC_BLOCKS) {
-                BOOST_LOG(warning) << "Skipping FEC for abnormally large encoded frame (needed "sv << fec_blocks_needed << " FEC blocks)"sv;
+                BOOST_LOG(warning) << "跳过异常大编码帧的FEC处理:"
+                                  << "\n - 需要的FEC块数: " << fec_blocks_needed
+                                  << "\n - 最大允许FEC块数: " << MAX_FEC_BLOCKS 
+                                  << "\n - 帧大小: " << payload.size() << " 字节"
+                                  << "\n - 每块最大数据量: " << max_data_per_fec_block << " 字节";
+                      
                 fecPercentage = 0;
                 fec_blocks_needed = MAX_FEC_BLOCKS;
             }
@@ -1529,7 +1535,7 @@ namespace stream {
                             // Use a batched send if it's supported on this platform
                             if (!platf::send_batch(batch_info)) {
                                 // Batched send is not available, so send each packet individually
-                                BOOST_LOG(verbose) << "Falling back to unbatched send"sv;
+                                // BOOST_LOG(verbose) << "Falling back to unbatched send"sv;
                                 for (auto y = 0; y < current_batch_size; y++) {
                                     auto send_info = platf::send_info_t {
                                             shards.prefix(next_shard_to_send + y),
@@ -1559,12 +1565,6 @@ namespace stream {
                                                    ratecontrol_frame_packets_sent / ratecontrol_packets_in_1ms;
 
                     frame_network_latency_logger.second_point_now_and_log();
-
-                    if (packet->is_idr()) {
-                        BOOST_LOG(verbose) << "Key Frame ["sv << packet->frame_index() << "] :: send ["sv << shards.size() << "] shards..."sv;
-                    } else {
-                        BOOST_LOG(verbose) << "Frame ["sv << packet->frame_index() << "] :: send ["sv << shards.size() << "] shards..."sv << std::endl;
-                    }
 
                     ++blockIndex;
                     lowseq += shards.size();
@@ -1859,12 +1859,6 @@ namespace stream {
 
     void postFrame(video::packet_t packet)  {
         if(videoPackets) {
-            auto session = (session_t *) packet->channel_data;
-            if(session->localAddress.is_v6()) {
-                BOOST_LOG(debug) << "Target invalid address: "sv << session->localAddress.to_string();
-                return;
-            }
-            BOOST_LOG(debug) << "Target address: "sv << session->localAddress.to_string();
             videoPackets->raise(std::move(packet));
         }
     }

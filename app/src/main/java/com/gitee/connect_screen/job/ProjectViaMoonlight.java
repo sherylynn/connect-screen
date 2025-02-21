@@ -53,6 +53,8 @@ public class ProjectViaMoonlight implements Job {
                 // 开启编码处理线程
                 new Thread(() -> {
                     int frameIndex = 0;
+                    boolean firstFrame = true;  // 添加标记判断是否为第一帧
+                    
                     while (!Thread.interrupted()) {
                         // 获取输出buffer
                         int outputBufferId = encoder.dequeueOutputBuffer(bufferInfo, -1);
@@ -62,12 +64,19 @@ public class ProjectViaMoonlight implements Job {
                             // 检查是否为IDR帧
                             boolean isIdrFrame = (bufferInfo.flags & MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0;
                             
+                            // 如果是第一帧但不是IDR帧，则跳过这一帧
+                            if (firstFrame && !isIdrFrame) {
+                                encoder.releaseOutputBuffer(outputBufferId, false);
+                                continue;
+                            }
+                            firstFrame = false;
+                            
                             if (outputBuffer != null) {
                                 // 处理编码后的数据
                                 byte[] data = new byte[bufferInfo.size];
                                 outputBuffer.get(data);
                                 
-                                android.util.Log.i("ProjectViaMoonlight", "收到H264帧: " + data.length + "字节, " + (isIdrFrame ? "IDR帧" : "非IDR帧"));
+                                android.util.Log.i("ProjectViaMoonlight", "收到 " + frameIndex + " 帧: " + data.length + "字节, " + (isIdrFrame ? "IDR帧" : "非IDR帧"));
                                 nativeServer.postFrame(data, isIdrFrame, frameIndex++);
                             }
                             

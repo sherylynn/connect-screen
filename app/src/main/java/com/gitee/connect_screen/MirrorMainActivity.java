@@ -169,9 +169,6 @@ public class MirrorMainActivity extends AppCompatActivity implements IMainActivi
                 }
             }
         }).start();
-        if (State.getMediaProjection() == null) {
-            State.startNewJob(new ProjectViaMoonlight(nativeServer));
-        }
         byte[] caCert = new byte[0];
         byte[] caKey = new byte[0];
         Context context = getApplicationContext();

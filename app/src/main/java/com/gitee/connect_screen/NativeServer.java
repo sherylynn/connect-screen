@@ -28,5 +28,11 @@ public class NativeServer {
     
     public void onMoonlightConnected() {
         android.util.Log.i("NativeServer", "Moonlight 客户端已连接");
+        
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+            if (State.getMediaProjection() == null) {
+                State.startNewJob(new ProjectViaMoonlight(this));
+            }
+        });
     }
 } 

@@ -26,7 +26,7 @@ static stream::config_t create_config(const std::string& input) {
     stream::config_t config = {};
 
     // 设置默认值
-    std::unordered_map<std::string_view, std::string_view> args = {
+    std::unordered_map<std::string, std::string> args = {
             {"x-nv-video[0].encoderCscMode", "0"},
             {"x-nv-vqos[0].bitStreamFormat", "0"},
             {"x-nv-video[0].dynamicRangeMode", "0"},
