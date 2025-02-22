@@ -39,16 +39,8 @@ public class ProjectViaMoonlight implements Job {
             format.setInteger(android.media.MediaFormat.KEY_I_FRAME_INTERVAL, 1);
             
             try {
-                // 创建编码器
-                android.media.MediaCodec encoder = android.media.MediaCodec.createEncoderByType(android.media.MediaFormat.MIMETYPE_VIDEO_AVC);
-                encoder.configure(format, null, null, android.media.MediaCodec.CONFIGURE_FLAG_ENCODE);
-                
-                // 获取输入Surface
-                android.view.Surface inputSurface = encoder.createInputSurface();
-                encoder.start();
-
                 // 创建并启动编码处理线程
-                EncoderThread encoderThread = new EncoderThread(encoder, nativeServer);
+                EncoderThread encoderThread = new EncoderThread(format, nativeServer);
                 encoderThread.start();
                 
                 // 创建虚拟显示器
@@ -56,7 +48,7 @@ public class ProjectViaMoonlight implements Job {
                     "ScreenCapture",
                     width, height, dpi,
                     android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC,
-                    inputSurface, null, null);
+                    encoderThread.getInputSurface(), null, null);
                     
                 State.mirrorVirtualDisplay = virtualDisplay;
                 State.log("已创建1080p虚拟显示器并开始H.264编码");
