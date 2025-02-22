@@ -52,8 +52,7 @@ public class ProjectViaMoonlight implements Job {
                 
                 // 开启编码处理线程
                 new Thread(() -> {
-                    int frameIndex = 0;
-                    boolean firstFrame = true;  // 添加标记判断是否为第一帧
+                    int frameIndex = 1;
                     
                     while (!Thread.interrupted()) {
                         // 获取输出buffer
@@ -64,19 +63,25 @@ public class ProjectViaMoonlight implements Job {
                             // 检查是否为IDR帧
                             boolean isIdrFrame = (bufferInfo.flags & MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0;
                             
-                            // 如果是第一帧但不是IDR帧，则跳过这一帧
-                            if (firstFrame && !isIdrFrame) {
-                                encoder.releaseOutputBuffer(outputBufferId, false);
-                                continue;
-                            }
-                            firstFrame = false;
-                            
                             if (outputBuffer != null) {
                                 // 处理编码后的数据
                                 byte[] data = new byte[bufferInfo.size];
                                 outputBuffer.get(data);
                                 
-                                android.util.Log.i("ProjectViaMoonlight", "收到 " + frameIndex + " 帧: " + data.length + "字节, " + (isIdrFrame ? "IDR帧" : "非IDR帧"));
+                                String frameType = "";
+                                if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
+                                    frameType = "配置帧";
+                                } else if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0) {
+                                    frameType = "关键帧";
+                                } else {
+                                    frameType = "普通帧";
+                                }
+                                
+                                android.util.Log.i("ProjectViaMoonlight", String.format(
+                                    "收到帧 %d: 大小=%d字节, 类型=%s, flags=0x%x", 
+                                    frameIndex, data.length, frameType, bufferInfo.flags));
+                                // 添加NALU解析日志
+                                logNaluTypes(data);
                                 nativeServer.postFrame(data, isIdrFrame, frameIndex++);
                             }
                             
@@ -133,6 +138,40 @@ public class ProjectViaMoonlight implements Job {
         } else {
             throw new RuntimeException("无法获取 MediaProjectionManager 服务");
         }
+    }
+
+    private void logNaluTypes(byte[] data) {
+        // 用于存储找到的NALU类型
+        StringBuilder naluInfo = new StringBuilder();
+        
+        // 查找NALU起始码 (0x00 0x00 0x00 0x01 或 0x00 0x00 0x01)
+        for (int i = 0; i < data.length - 4; i++) {
+            if ((data[i] == 0x00 && data[i + 1] == 0x00 && data[i + 2] == 0x00 && data[i + 3] == 0x01) ||
+                (data[i] == 0x00 && data[i + 1] == 0x00 && data[i + 2] == 0x01)) {
+                
+                // 确定NALU头的位置
+                int naluStart = (data[i + 2] == 0x01) ? i + 3 : i + 4;
+                if (naluStart < data.length) {
+                    // 获取NALU类型 (低5位)
+                    int naluType = data[naluStart] & 0x1F;
+                    String naluTypeStr = "";
+                    
+                    // 解析NALU类型
+                    switch (naluType) {
+                        case 1: naluTypeStr = "SLICE"; break;
+                        case 5: naluTypeStr = "IDR"; break;
+                        case 6: naluTypeStr = "SEI"; break;
+                        case 7: naluTypeStr = "SPS"; break;
+                        case 8: naluTypeStr = "PPS"; break;
+                        default: naluTypeStr = "TYPE_" + naluType;
+                    }
+                    
+                    naluInfo.append(naluTypeStr).append(" ");
+                }
+            }
+        }
+        
+        android.util.Log.i("ProjectViaMoonlight", "NALU类型: " + naluInfo.toString());
     }
 
 }
