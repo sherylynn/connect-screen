@@ -184,42 +184,45 @@ public class MirrorMainActivity extends AppCompatActivity implements IMainActivi
         NvHTTP.CA_CERT = caCert;
         NvHTTP.CA_KEY = caKey;
 
-        try {
-            InetAddress addr = getWifiIpAddress(context);
-            if (addr == null) {
-                android.util.Log.e("MirrorHomeFragment", "无法获取WiFi IP地址");
-                return;
-            }
-            android.util.Log.i("MirrorHomeFragment", "获取到WiFi IP地址: " + addr.getHostAddress());
-
-            // 启动 HTTP 服务器
-            NvHTTP.ADDRESS = addr;
-            nvHttp = new NvHTTP(addr);
-            nvHttps = new NvHTTPS(nativeServer);
-            rtspServer = new RTSPServer(nativeServer);
+        // 将网络初始化操作移到后台线程
+        new Thread(() -> {
             try {
-                nvHttp.start();
-                nvHttps.start();
-                rtspServer.start();
-                android.util.Log.i("MirrorHomeFragment", "NvHTTP服务器启动成功，端口: " + NvHTTP.HTTP_PORT);
+                InetAddress addr = getWifiIpAddress(context);
+                if (addr == null) {
+                    android.util.Log.e("MirrorHomeFragment", "无法获取WiFi IP地址");
+                    return;
+                }
+                android.util.Log.i("MirrorHomeFragment", "获取到WiFi IP地址: " + addr.getHostAddress());
+
+                // 启动 HTTP 服务器
+                NvHTTP.ADDRESS = addr;
+                nvHttp = new NvHTTP(addr);
+                nvHttps = new NvHTTPS(nativeServer);
+                rtspServer = new RTSPServer(nativeServer);
+                try {
+                    nvHttp.start();
+                    nvHttps.start();
+                    rtspServer.start();
+                    android.util.Log.i("MirrorHomeFragment", "NvHTTP服务器启动成功，端口: " + NvHTTP.HTTP_PORT);
+                } catch (IOException e) {
+                    android.util.Log.e("MirrorHomeFragment", "NvHTTP服务器启动失败", e);
+                    return;
+                }
+
+                jmdns = JmDNS.create(addr);
+                serviceInfo = ServiceInfo.create(
+                        "_nvstream._tcp.local.",
+                        "MirrorScreen",
+                        NvHTTP.HTTP_PORT,
+                        "ConnectScreen"
+                );
+
+                jmdns.registerService(serviceInfo);
+                android.util.Log.i("MirrorHomeFragment", "JmDNS服务注册成功");
             } catch (IOException e) {
-                android.util.Log.e("MirrorHomeFragment", "NvHTTP服务器启动失败", e);
-                return;
+                android.util.Log.e("MirrorHomeFragment", "初始化网络服务失败", e);
             }
-
-            jmdns = JmDNS.create(addr);
-            serviceInfo = ServiceInfo.create(
-                    "_nvstream._tcp.local.",
-                    "MirrorScreen",
-                    NvHTTP.HTTP_PORT,
-                    "ConnectScreen"
-            );
-
-            jmdns.registerService(serviceInfo);
-            android.util.Log.i("MirrorHomeFragment", "JmDNS服务注册成功");
-        } catch (IOException e) {
-            android.util.Log.e("MirrorHomeFragment", "初始化网络服务失败", e);
-        }
+        }).start();
     }
 
     public static InetAddress getWifiIpAddress(Context context) throws UnknownHostException {
