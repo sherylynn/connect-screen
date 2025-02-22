@@ -47,49 +47,9 @@ public class ProjectViaMoonlight implements Job {
                 android.view.Surface inputSurface = encoder.createInputSurface();
                 encoder.start();
 
-                // 创建缓冲区接收编码数据
-                android.media.MediaCodec.BufferInfo bufferInfo = new android.media.MediaCodec.BufferInfo();
-                
-                // 开启编码处理线程
-                new Thread(() -> {
-                    int frameIndex = 1;
-                    
-                    while (!Thread.interrupted()) {
-                        // 获取输出buffer
-                        int outputBufferId = encoder.dequeueOutputBuffer(bufferInfo, -1);
-                        if (outputBufferId >= 0) {
-                            ByteBuffer outputBuffer = encoder.getOutputBuffer(outputBufferId);
-                            
-                            // 检查是否为IDR帧
-                            boolean isIdrFrame = (bufferInfo.flags & MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0;
-                            
-                            if (outputBuffer != null) {
-                                // 处理编码后的数据
-                                byte[] data = new byte[bufferInfo.size];
-                                outputBuffer.get(data);
-                                
-                                String frameType = "";
-                                if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
-                                    frameType = "配置帧";
-                                } else if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0) {
-                                    frameType = "关键帧";
-                                } else {
-                                    frameType = "普通帧";
-                                }
-                                
-                                android.util.Log.i("ProjectViaMoonlight", String.format(
-                                    "收到帧 %d: 大小=%d字节, 类型=%s, flags=0x%x", 
-                                    frameIndex, data.length, frameType, bufferInfo.flags));
-                                // 添加NALU解析日志
-                                logNaluTypes(data);
-                                nativeServer.postFrame(data, isIdrFrame, frameIndex++);
-                            }
-                            
-                            // 释放buffer
-                            encoder.releaseOutputBuffer(outputBufferId, false);
-                        }
-                    }
-                }).start();
+                // 创建并启动编码处理线程
+                EncoderThread encoderThread = new EncoderThread(encoder, nativeServer);
+                encoderThread.start();
                 
                 // 创建虚拟显示器
                 android.hardware.display.VirtualDisplay virtualDisplay = mediaProjection.createVirtualDisplay(
