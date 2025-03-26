@@ -1,6 +1,6 @@
 #pragma once
 #include "stream.h"
-#include "moonlight-common-c/src/input.h"
+#include "moonlight-common-c/src/Input.h"
 
 namespace sunshine_callbacks {
     void callJavaOnPinRequested();
