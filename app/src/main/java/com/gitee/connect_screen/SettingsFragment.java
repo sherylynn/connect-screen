@@ -45,6 +45,7 @@ public class SettingsFragment extends Fragment {
     private CheckBox cbDisableScreenShareProtection;
     private CheckBox cbDisableUsbAudio;
     private CheckBox cbUseRealScreenOff;
+    private CheckBox cbAllowForceScreenOff;
     private CheckBox cbStayOnWhilePlugged;
     private View externalDeviceContainer;
 
@@ -64,6 +65,7 @@ public class SettingsFragment extends Fragment {
         rvInternalDevices = view.findViewById(R.id.rvInternalDevices);
         cbDisableUsbAudio = view.findViewById(R.id.cbDisableUsbAudio);
         cbUseRealScreenOff = view.findViewById(R.id.cbUseRealScreenOff);
+        cbAllowForceScreenOff = view.findViewById(R.id.cbAllowForceScreenOff);
         cbStayOnWhilePlugged = view.findViewById(R.id.cbStayOnWhilePlugged);
         externalDeviceContainer = view.findViewById(R.id.externalDeviceContainer);
         
@@ -79,6 +81,7 @@ public class SettingsFragment extends Fragment {
             setupEnableNonResizableCheckbox();
             setupDisableUsbAudioCheckbox();
             setupUseRealScreenOffCheckbox();
+            setupAllowForceScreenOffCheckbox();
             setupStayOnWhilePluggedCheckbox();
         } else {
             cbDisableScreenShareProtection.setVisibility(View.GONE);
@@ -287,6 +290,19 @@ public class SettingsFragment extends Fragment {
             requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
                     .edit()
                     .putBoolean("use_real_screen_off", isChecked)
+                    .apply();
+        });
+    }
+
+    private void setupAllowForceScreenOffCheckbox() {
+        boolean allowForce = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
+                .getBoolean("allow_force_screen_off", false);
+        cbAllowForceScreenOff.setChecked(allowForce);
+
+        cbAllowForceScreenOff.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
+                    .edit()
+                    .putBoolean("allow_force_screen_off", isChecked)
                     .apply();
         });
     }

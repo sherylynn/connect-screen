@@ -35,6 +35,7 @@ import com.gitee.connect_screen.shizuku.SurfaceControl;
 import com.termux.x11.MainActivity;
 
 import dev.rikka.tools.refine.Refine;
+import rikka.shizuku.Shizuku;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -199,7 +200,20 @@ public class PureBlackActivity extends AppCompatActivity {
                    this.startService(serviceIntent);
                }
            }
-           powerOffScreen();
+           // 确保真实熄屏所需的 userService 已就绪；若为空则先绑定后再尝试
+           if (useRealScreenOff) {
+               if (State.userService == null) {
+                   try {
+                       Shizuku.peekUserService(State.userServiceArgs, State.userServiceConnection);
+                       Shizuku.bindUserService(State.userServiceArgs, State.userServiceConnection);
+                   } catch (Throwable t) {
+                       State.log("bind userService failed: " + t);
+                   }
+                   new Handler().postDelayed(this::powerOffScreen, 300);
+               } else {
+                   powerOffScreen();
+               }
+           }
        } else if(TouchpadAccessibilityService.getInstance() != null) {
            TouchpadActivity.setFocus(null, State.lastSingleAppDisplay);
        } else if (TouchpadAccessibilityService.isAccessibilityServiceEnabled(this)) {

@@ -69,7 +69,9 @@ public class HomeFragment extends Fragment {
             simulateScreenOffBtn.setText("真实熄屏");
         }
         simulateScreenOffBtn.setOnClickListener(v -> {
-            if (State.lastSingleAppDisplay <= 0) {
+            boolean allowForceScreenOff = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
+                .getBoolean("allow_force_screen_off", false);
+            if (State.lastSingleAppDisplay <= 0 && !allowForceScreenOff) {
                 showHelp();
             } else {
                 Intent intent = new Intent(getActivity(), PureBlackActivity.class);

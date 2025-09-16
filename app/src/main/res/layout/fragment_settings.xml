@@ -55,6 +55,13 @@
         android:layout_marginBottom="8dp"/>
 
     <CheckBox
+        android:id="@+id/cbAllowForceScreenOff"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="允许在未投屏时强行熄屏（风险：可能影响操作）"
+        android:layout_marginBottom="8dp"/>
+
+    <CheckBox
         android:id="@+id/cbStayOnWhilePlugged"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
