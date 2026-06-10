@@ -147,6 +147,22 @@ public class UserService extends IUserService.Stub  {
         listenVolumeKey = true;
         keepScreenOff = true;
         
+        // 启动循环熄屏线程（先启动，确保即使音量键监听失败也能保持熄屏）
+        screenOffLoopThread = new Thread(() -> {
+            Log.i("UserService", "screen off loop started");
+            while (keepScreenOff) {
+                try {
+                    setScreenPower(SurfaceControl.POWER_MODE_OFF);
+                    Thread.sleep(SCREEN_OFF_CHECK_INTERVAL);
+                } catch (InterruptedException e) {
+                    Log.i("UserService", "screen off loop interrupted");
+                    break;
+                }
+            }
+            Log.i("UserService", "screen off loop stopped");
+        });
+        screenOffLoopThread.start();
+        
         // 启动音量键监听线程
         Thread thread = new Thread(() -> {
             try {
@@ -181,26 +197,11 @@ public class UserService extends IUserService.Stub  {
                 }
             } catch (Exception e) {
                 Log.e("UserService", "Listen volume key failed", e);
+                // 音量键监听失败不影响循环熄屏，只记录日志
             }
         });
         volumeKeyThread = thread;
         thread.start();
-        
-        // 启动循环熄屏线程
-        screenOffLoopThread = new Thread(() -> {
-            Log.i("UserService", "screen off loop started");
-            while (keepScreenOff) {
-                try {
-                    setScreenPower(SurfaceControl.POWER_MODE_OFF);
-                    Thread.sleep(SCREEN_OFF_CHECK_INTERVAL);
-                } catch (InterruptedException e) {
-                    Log.i("UserService", "screen off loop interrupted");
-                    break;
-                }
-            }
-            Log.i("UserService", "screen off loop stopped");
-        });
-        screenOffLoopThread.start();
     }
 
     public void stopListenVolumeKey() {

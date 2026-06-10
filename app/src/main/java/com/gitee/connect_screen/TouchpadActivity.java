@@ -52,11 +52,13 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.gitee.connect_screen.job.StartTouchPad;
 import com.gitee.connect_screen.shizuku.ServiceUtils;
 import com.gitee.connect_screen.shizuku.ShizukuUtils;
+import com.gitee.connect_screen.shizuku.SurfaceControl;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
+import android.os.RemoteException;
 import dev.rikka.tools.refine.Refine;
 
 public class TouchpadActivity extends AppCompatActivity {
@@ -477,9 +479,28 @@ public class TouchpadActivity extends AppCompatActivity {
     }
 
     private void toggleDarkMode() {
-        Intent intent = new Intent(this, PureBlackActivity.class);
-        ActivityOptions options = ActivityOptions.makeBasic();
-        startActivity(intent, options.toBundle());
+        // 检查是否使用真实熄屏
+        boolean useRealScreenOff = getSharedPreferences("settings", MODE_PRIVATE)
+                .getBoolean("use_real_screen_off", false);
+        
+        if (useRealScreenOff && ShizukuUtils.hasPermission() && State.userService != null) {
+            // 直接调用真实熄屏，不需要启动 Activity
+            try {
+                State.userService.startListenVolumeKey();
+                State.userService.setScreenPower(SurfaceControl.POWER_MODE_OFF);
+            } catch (Exception e) {
+                Log.e(TAG, "直接熄屏失败，回退到 Activity 方式: " + e.getMessage());
+                // 回退到启动 Activity 的方式
+                Intent intent = new Intent(this, PureBlackActivity.class);
+                ActivityOptions options = ActivityOptions.makeBasic();
+                startActivity(intent, options.toBundle());
+            }
+        } else {
+            // 使用模拟熄屏（黑色背景），需要启动 Activity
+            Intent intent = new Intent(this, PureBlackActivity.class);
+            ActivityOptions options = ActivityOptions.makeBasic();
+            startActivity(intent, options.toBundle());
+        }
     }
 
     public static void setFocus(IInputManager inputManager, int displayId) {

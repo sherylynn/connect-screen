@@ -61,7 +61,31 @@ public class PureBlackActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // 先读取设置，决定是否使用真实熄屏
+        useRealScreenOff = getSharedPreferences("settings", Context.MODE_PRIVATE)
+                .getBoolean("use_real_screen_off", false);
+        
+        // 如果使用真实熄屏，在 super.onCreate 之前就禁用动画和设置透明背景
+        if (useRealScreenOff) {
+            // 禁用 Activity 进入动画
+            overridePendingTransition(0, 0);
+        }
+        
         super.onCreate(savedInstanceState);
+        
+        // 如果使用真实熄屏，立即设置窗口为完全透明
+        if (useRealScreenOff) {
+            Window window = getWindow();
+            // 设置窗口背景为透明
+            window.setBackgroundDrawableResource(android.R.color.transparent);
+            // 禁用所有动画
+            window.setWindowAnimations(0);
+            // 设置一个空的视图
+            View emptyView = new View(this);
+            emptyView.setBackgroundColor(Color.TRANSPARENT);
+            setContentView(emptyView);
+        }
+        
         State.isInPureBlackActivity = this;
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
@@ -86,9 +110,6 @@ public class PureBlackActivity extends AppCompatActivity {
             layoutParams.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
             window.setAttributes(layoutParams);
         }
-
-        useRealScreenOff = getSharedPreferences("settings", Context.MODE_PRIVATE)
-                .getBoolean("use_real_screen_off", false);
 
         // 如果使用真实熄屏，则不显示黑色背景，直接让屏幕熄灭
         if (!useRealScreenOff) {
@@ -256,6 +277,17 @@ public class PureBlackActivity extends AppCompatActivity {
             } catch (RemoteException e) {
                 State.log("powerUpScreen failed: " + e.getMessage());
             }
+        }
+    }
+
+    @Override
+    public void finish() {
+        // 如果使用真实熄屏，禁用退出动画
+        if (useRealScreenOff) {
+            super.finish();
+            overridePendingTransition(0, 0);
+        } else {
+            super.finish();
         }
     }
 
