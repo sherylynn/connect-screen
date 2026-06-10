@@ -46,6 +46,7 @@ public class SettingsFragment extends Fragment {
     private CheckBox cbDisableUsbAudio;
     private CheckBox cbUseRealScreenOff;
     private CheckBox cbAllowForceScreenOff;
+    private CheckBox cbMouseMiddleButtonSwitch;
     private CheckBox cbStayOnWhilePlugged;
     private View externalDeviceContainer;
 
@@ -66,6 +67,7 @@ public class SettingsFragment extends Fragment {
         cbDisableUsbAudio = view.findViewById(R.id.cbDisableUsbAudio);
         cbUseRealScreenOff = view.findViewById(R.id.cbUseRealScreenOff);
         cbAllowForceScreenOff = view.findViewById(R.id.cbAllowForceScreenOff);
+        cbMouseMiddleButtonSwitch = view.findViewById(R.id.cbMouseMiddleButtonSwitch);
         cbStayOnWhilePlugged = view.findViewById(R.id.cbStayOnWhilePlugged);
         externalDeviceContainer = view.findViewById(R.id.externalDeviceContainer);
         
@@ -82,6 +84,7 @@ public class SettingsFragment extends Fragment {
             setupDisableUsbAudioCheckbox();
             setupUseRealScreenOffCheckbox();
             setupAllowForceScreenOffCheckbox();
+            setupMouseMiddleButtonSwitchCheckbox();
             setupStayOnWhilePluggedCheckbox();
         } else {
             cbDisableScreenShareProtection.setVisibility(View.GONE);
@@ -322,6 +325,22 @@ public class SettingsFragment extends Fragment {
             } catch (SecurityException e) {
                 State.log("failed: " + e);
             }
+        });
+    }
+
+    private void setupMouseMiddleButtonSwitchCheckbox() {
+        // 从 SharedPreferences 读取保存的设置
+        boolean mouseMiddleButtonSwitch = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
+                .getBoolean("mouse_middle_button_switch_display", false);
+                
+        cbMouseMiddleButtonSwitch.setChecked(mouseMiddleButtonSwitch);
+
+        cbMouseMiddleButtonSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            // 保存到 SharedPreferences
+            requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
+                    .edit()
+                    .putBoolean("mouse_middle_button_switch_display", isChecked)
+                    .apply();
         });
     }
 }

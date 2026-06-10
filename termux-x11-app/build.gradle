@@ -3,6 +3,7 @@ apply plugin: 'com.android.library'
 android {
     namespace 'com.termux.x11'
     compileSdk 34
+    buildToolsVersion "36.1.0"
 
     defaultConfig {
         minSdk 28

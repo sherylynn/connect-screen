@@ -62,6 +62,13 @@
         android:layout_marginBottom="8dp"/>
 
     <CheckBox
+        android:id="@+id/cbMouseMiddleButtonSwitch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="鼠标中键切换屏幕（循环切换鼠标所在屏幕）"
+        android:layout_marginBottom="8dp"/>
+
+    <CheckBox
         android:id="@+id/cbStayOnWhilePlugged"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

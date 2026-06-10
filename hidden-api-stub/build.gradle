@@ -5,6 +5,7 @@ plugins {
 android {
     namespace 'com.gitee.connect_screen'
     compileSdk 34
+    buildToolsVersion "36.1.0"
 
     defaultConfig {
         minSdk 28

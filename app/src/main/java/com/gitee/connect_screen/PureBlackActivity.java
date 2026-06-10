@@ -87,91 +87,100 @@ public class PureBlackActivity extends AppCompatActivity {
             window.setAttributes(layoutParams);
         }
 
-        // 设置状态栏和导航栏透明
-        window.setStatusBarColor(Color.TRANSPARENT);
-        window.setNavigationBarColor(Color.TRANSPARENT);
-
-        // 设置纯黑背景
-        View view = new View(this);
-        view.setFocusable(true);
-        view.setFocusableInTouchMode(true);
-        view.setBackgroundColor(Color.BLACK);
-        setContentView(view);
-
         useRealScreenOff = getSharedPreferences("settings", Context.MODE_PRIVATE)
                 .getBoolean("use_real_screen_off", false);
-        
-        // 添加鼠标捕获
-        view.setOnGenericMotionListener((v, event) -> {
-            TouchpadActivity.setFocus(inputManager, Display.DEFAULT_DISPLAY);
-            view.requestFocus();
-            view.requestFocusFromTouch();
-            view.requestPointerCapture();
-            return false;
-        });
-        
-        view.setOnCapturedPointerListener((v, event) -> {
-            if (MainActivity.mInputHandler != null) {
-                MainActivity.lorieView.forceHasPointerCapture = true;
-                MainActivity.mInputHandler.handleTouchEvent(MainActivity.lorieView, MainActivity.lorieView, event);
-                MainActivity.lorieView.forceHasPointerCapture = false;
-            }
-            return true;
-        });
-        
-        DisplayManager displayManager = (DisplayManager) getSystemService(DISPLAY_SERVICE);
 
-        // 修改触摸监听器
-        view.setOnTouchListener((v, event) -> {
-            if (isExternalDevice(event)) {
-                Display targetDisplay = displayManager.getDisplay(State.lastSingleAppDisplay);
-                if (targetDisplay == null)
+        // 如果使用真实熄屏，则不显示黑色背景，直接让屏幕熄灭
+        if (!useRealScreenOff) {
+            // 设置状态栏和导航栏透明
+            window.setStatusBarColor(Color.TRANSPARENT);
+            window.setNavigationBarColor(Color.TRANSPARENT);
+
+            // 设置纯黑背景
+            View view = new View(this);
+            view.setFocusable(true);
+            view.setFocusableInTouchMode(true);
+            view.setBackgroundColor(Color.BLACK);
+            setContentView(view);
+            
+            // 添加鼠标捕获
+            view.setOnGenericMotionListener((v, event) -> {
+                TouchpadActivity.setFocus(inputManager, Display.DEFAULT_DISPLAY);
+                view.requestFocus();
+                view.requestFocusFromTouch();
+                view.requestPointerCapture();
+                return false;
+            });
+            
+            view.setOnCapturedPointerListener((v, event) -> {
+                // 检测鼠标中键按下事件
+                if (event.getButtonState() == MotionEvent.BUTTON_STYLUS_PRIMARY) {
+                    handleMouseMiddleButtonClick();
                     return true;
-
-                // 获取原始坐标
-                float x = event.getX();
-                float y = event.getY();
-                
-                // 计算相对坐标
-                float relativeX = x / v.getWidth();
-                float relativeY = y / v.getHeight();
-
-                // 获取目标显示器的旋转角度
-                int rotation = targetDisplay.getRotation();
-                float targetWidth = targetDisplay.getWidth();
-                float targetHeight = targetDisplay.getHeight();
-                
-                // 根据旋转角度调整坐标映射
-                float mappedX, mappedY;
-                switch (rotation) {
-                    case Surface.ROTATION_270:
-                        mappedX = (1 - relativeY) * targetWidth;
-                        mappedY = relativeX * targetHeight;
-                        break;
-                    case Surface.ROTATION_180:
-                        mappedX = (1 - relativeX) * targetWidth;
-                        mappedY = (1 - relativeY) * targetHeight;
-                        break;
-                    case Surface.ROTATION_90:
-                        mappedX = relativeY * targetWidth;
-                        mappedY = (1 - relativeX) * targetHeight;
-                        break;
-                    default: // Surface.ROTATION_0
-                        mappedX = relativeX * targetWidth;
-                        mappedY = relativeY * targetHeight;
-                        break;
                 }
-                // 设置整后的坐标
-                event.setLocation(mappedX, mappedY);
-
-                MotionEventHidden motionEventHidden = Refine.unsafeCast(event);
-                motionEventHidden.setDisplayId(State.lastSingleAppDisplay);
-                ServiceUtils.getInputManager().injectInputEvent(event, 0);
+                
+                if (MainActivity.mInputHandler != null) {
+                    MainActivity.lorieView.forceHasPointerCapture = true;
+                    MainActivity.mInputHandler.handleTouchEvent(MainActivity.lorieView, MainActivity.lorieView, event);
+                    MainActivity.lorieView.forceHasPointerCapture = false;
+                }
                 return true;
-            }
-            finish();
-            return true;
-        });
+            });
+            
+            DisplayManager displayManager = (DisplayManager) getSystemService(DISPLAY_SERVICE);
+
+            // 修改触摸监听器
+            view.setOnTouchListener((v, event) -> {
+                if (isExternalDevice(event)) {
+                    Display targetDisplay = displayManager.getDisplay(State.lastSingleAppDisplay);
+                    if (targetDisplay == null)
+                        return true;
+
+                    // 获取原始坐标
+                    float x = event.getX();
+                    float y = event.getY();
+                    
+                    // 计算相对坐标
+                    float relativeX = x / v.getWidth();
+                    float relativeY = y / v.getHeight();
+
+                    // 获取目标显示器的旋转角度
+                    int rotation = targetDisplay.getRotation();
+                    float targetWidth = targetDisplay.getWidth();
+                    float targetHeight = targetDisplay.getHeight();
+                    
+                    // 根据旋转角度调整坐标映射
+                    float mappedX, mappedY;
+                    switch (rotation) {
+                        case Surface.ROTATION_270:
+                            mappedX = (1 - relativeY) * targetWidth;
+                            mappedY = relativeX * targetHeight;
+                            break;
+                        case Surface.ROTATION_180:
+                            mappedX = (1 - relativeX) * targetWidth;
+                            mappedY = (1 - relativeY) * targetHeight;
+                            break;
+                        case Surface.ROTATION_90:
+                            mappedX = relativeY * targetWidth;
+                            mappedY = (1 - relativeX) * targetHeight;
+                            break;
+                        default: // Surface.ROTATION_0
+                            mappedX = relativeX * targetWidth;
+                            mappedY = relativeY * targetHeight;
+                            break;
+                    }
+                    // 设置整后的坐标
+                    event.setLocation(mappedX, mappedY);
+
+                    MotionEventHidden motionEventHidden = Refine.unsafeCast(event);
+                    motionEventHidden.setDisplayId(State.lastSingleAppDisplay);
+                    ServiceUtils.getInputManager().injectInputEvent(event, 0);
+                    return true;
+                }
+                finish();
+                return true;
+            });
+        }
        if (ShizukuUtils.hasPermission()) {
            inputManager = ServiceUtils.getInputManager();
            TouchpadActivity.setFocus(inputManager, State.lastSingleAppDisplay);
@@ -247,6 +256,46 @@ public class PureBlackActivity extends AppCompatActivity {
             } catch (RemoteException e) {
                 State.log("powerUpScreen failed: " + e.getMessage());
             }
+        }
+    }
+
+    // 处理鼠标中键点击事件，循环切换屏幕
+    private void handleMouseMiddleButtonClick() {
+        // 检查设置中是否启用了鼠标中键切换屏幕功能
+        boolean enableMouseSwitch = getSharedPreferences("settings", Context.MODE_PRIVATE)
+                .getBoolean("mouse_middle_button_switch_display", false);
+        
+        if (!enableMouseSwitch) {
+            return;
+        }
+        
+        DisplayManager displayManager = (DisplayManager) getSystemService(DISPLAY_SERVICE);
+        Display[] displays = displayManager.getDisplays();
+        
+        if (displays.length <= 1) {
+            // 只有一个显示器，无需切换
+            return;
+        }
+        
+        // 获取当前鼠标所在的显示器ID（这里使用 State.lastSingleAppDisplay 作为当前显示）
+        int currentDisplayId = State.lastSingleAppDisplay;
+        
+        // 找到下一个显示器
+        int nextDisplayId = Display.DEFAULT_DISPLAY;
+        for (int i = 0; i < displays.length; i++) {
+            if (displays[i].getDisplayId() == currentDisplayId) {
+                // 找到下一个显示器（循环）
+                int nextIndex = (i + 1) % displays.length;
+                nextDisplayId = displays[nextIndex].getDisplayId();
+                break;
+            }
+        }
+        
+        // 切换到下一个显示器
+        if (nextDisplayId != currentDisplayId && inputManager != null) {
+            State.lastSingleAppDisplay = nextDisplayId;
+            TouchpadActivity.setFocus(inputManager, nextDisplayId);
+            Log.d("PureBlackActivity", "鼠标中键切换屏幕: " + currentDisplayId + " -> " + nextDisplayId);
         }
     }
 
