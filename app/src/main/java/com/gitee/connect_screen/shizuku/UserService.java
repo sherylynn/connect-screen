@@ -25,7 +25,7 @@ public class UserService extends IUserService.Stub  {
     private Thread volumeKeyThread;
     private boolean keepScreenOff = false;
     private Thread screenOffLoopThread;
-    private static final long SCREEN_OFF_CHECK_INTERVAL = 2000; // 检查间隔（毫秒）
+    private static final long SCREEN_OFF_CHECK_INTERVAL = 500; // 检查间隔（毫秒），缩短为500ms以更快响应系统唤醒
 
     public UserService() {
         Log.i("UserService", "constructor");

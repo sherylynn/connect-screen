@@ -133,7 +133,7 @@ public class SettingsFragment extends Fragment {
         List<String> displayNames = new ArrayList<>();
         displayNames.add("不自动熄屏");
         for (Display display : displays) {
-            displayNames.add("显示器 " + display.getDisplayId() + " (" + display.getName() + ")");
+            displayNames.add(display.getName());
         }
 
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
@@ -144,15 +144,15 @@ public class SettingsFragment extends Fragment {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerAutoScreenOffDisplay.setAdapter(adapter);
 
-        // 读取保存的设置
+        // 读取保存的设置（使用显示器名称作为稳定标识符）
         SharedPreferences settings = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE);
-        int savedDisplayId = settings.getInt("auto_screen_off_display_id", -1);
+        String savedDisplayName = settings.getString("auto_screen_off_display_name", "");
         
         // 查找对应的位置
         int position = 0; // 默认"不自动熄屏"
-        if (savedDisplayId != -1) {
+        if (!savedDisplayName.isEmpty()) {
             for (int i = 0; i < displays.length; i++) {
-                if (displays[i].getDisplayId() == savedDisplayId) {
+                if (displays[i].getName().equals(savedDisplayName)) {
                     position = i + 1; // +1 因为第一个选项是"不自动熄屏"
                     break;
                 }
@@ -164,13 +164,13 @@ public class SettingsFragment extends Fragment {
         spinnerAutoScreenOffDisplay.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
-                int selectedDisplayId = -1;
+                String selectedDisplayName = "";
                 if (position > 0 && position <= displays.length) {
-                    selectedDisplayId = displays[position - 1].getDisplayId();
+                    selectedDisplayName = displays[position - 1].getName();
                 }
-                // 保存到 SharedPreferences
+                // 保存到 SharedPreferences（使用显示器名称作为稳定标识符）
                 settings.edit()
-                        .putInt("auto_screen_off_display_id", selectedDisplayId)
+                        .putString("auto_screen_off_display_name", selectedDisplayName)
                         .apply();
             }
 

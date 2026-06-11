@@ -153,14 +153,14 @@ public class DisplayMonitor {
         if (!useRealScreenOff) {
             return;
         }
-        // 检查是否设置了自动熄屏的屏幕
-        int autoScreenOffDisplayId = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-                .getInt("auto_screen_off_display_id", -1);
-        if (autoScreenOffDisplayId == -1) {
+        // 检查是否设置了自动熄屏的屏幕（使用显示器名称作为稳定标识符）
+        String autoScreenOffDisplayName = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+                .getString("auto_screen_off_display_name", "");
+        if (autoScreenOffDisplayName.isEmpty()) {
             return;
         }
-        // 检查当前插入的屏幕是否是绑定的屏幕
-        if (display.getDisplayId() == autoScreenOffDisplayId) {
+        // 检查当前插入的屏幕是否是绑定的屏幕（通过名称匹配）
+        if (display.getName().equals(autoScreenOffDisplayName)) {
             State.log("检测到绑定屏幕 " + display.getName() + " 插入，自动熄屏");
             new Handler().postDelayed(() -> {
                 try {
