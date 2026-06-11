@@ -50,6 +50,7 @@ public class SettingsFragment extends Fragment {
     private CheckBox cbAllowForceScreenOff;
     private CheckBox cbMouseMiddleButtonSwitch;
     private CheckBox cbStayOnWhilePlugged;
+    private CheckBox cbAutoScreenOffOnAppOpen;
     private View externalDeviceContainer;
 
     @Nullable
@@ -71,6 +72,7 @@ public class SettingsFragment extends Fragment {
         cbAllowForceScreenOff = view.findViewById(R.id.cbAllowForceScreenOff);
         cbMouseMiddleButtonSwitch = view.findViewById(R.id.cbMouseMiddleButtonSwitch);
         cbStayOnWhilePlugged = view.findViewById(R.id.cbStayOnWhilePlugged);
+        cbAutoScreenOffOnAppOpen = view.findViewById(R.id.cbAutoScreenOffOnAppOpen);
         spinnerAutoScreenOffDisplay = view.findViewById(R.id.spinnerAutoScreenOffDisplay);
         externalDeviceContainer = view.findViewById(R.id.externalDeviceContainer);
         
@@ -90,6 +92,7 @@ public class SettingsFragment extends Fragment {
             setupAllowForceScreenOffCheckbox();
             setupMouseMiddleButtonSwitchCheckbox();
             setupStayOnWhilePluggedCheckbox();
+            setupAutoScreenOffOnAppOpenCheckbox();
         } else {
             cbDisableScreenShareProtection.setVisibility(View.GONE);
             cbForceDesktop.setVisibility(View.GONE);
@@ -403,6 +406,22 @@ public class SettingsFragment extends Fragment {
             requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
                     .edit()
                     .putBoolean("mouse_middle_button_switch_display", isChecked)
+                    .apply();
+        });
+    }
+
+    private void setupAutoScreenOffOnAppOpenCheckbox() {
+        // 从 SharedPreferences 读取保存的设置
+        boolean autoScreenOffOnAppOpen = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
+                .getBoolean("auto_screen_off_on_app_open", false);
+                
+        cbAutoScreenOffOnAppOpen.setChecked(autoScreenOffOnAppOpen);
+
+        cbAutoScreenOffOnAppOpen.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            // 保存到 SharedPreferences
+            requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
+                    .edit()
+                    .putBoolean("auto_screen_off_on_app_open", isChecked)
                     .apply();
         });
     }

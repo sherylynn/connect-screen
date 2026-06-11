@@ -90,6 +90,13 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="8dp"/>
 
+    <CheckBox
+        android:id="@+id/cbAutoScreenOffOnAppOpen"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="打开应用时自动熄屏（如果有绑定的屏幕）"
+        android:layout_marginBottom="8dp"/>
+
     <LinearLayout
         android:id="@+id/externalDeviceContainer"
         android:layout_width="match_parent"

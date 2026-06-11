@@ -25,7 +25,7 @@ public class UserService extends IUserService.Stub  {
     private Thread volumeKeyThread;
     private boolean keepScreenOff = false;
     private Thread screenOffLoopThread;
-    private static final long SCREEN_OFF_CHECK_INTERVAL = 500; // 检查间隔（毫秒），缩短为500ms以更快响应系统唤醒
+    private static final long SCREEN_OFF_CHECK_INTERVAL = 100; // 检查间隔（毫秒），缩短为100ms以更快响应系统唤醒
 
     public UserService() {
         Log.i("UserService", "constructor");
@@ -157,6 +157,15 @@ public class UserService extends IUserService.Stub  {
                 } catch (InterruptedException e) {
                     Log.i("UserService", "screen off loop interrupted");
                     break;
+                } catch (Throwable e) {
+                    // 捕获所有异常，防止循环线程崩溃
+                    Log.e("UserService", "screen off loop error, continuing...", e);
+                    try {
+                        Thread.sleep(SCREEN_OFF_CHECK_INTERVAL);
+                    } catch (InterruptedException ie) {
+                        Log.i("UserService", "screen off loop interrupted during error recovery");
+                        break;
+                    }
                 }
             }
             Log.i("UserService", "screen off loop stopped");

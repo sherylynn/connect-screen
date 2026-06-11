@@ -19,6 +19,7 @@ import android.os.Process;
 import android.os.UserHandle;
 import android.os.UserHandleHidden;
 import android.permission.IPermissionManager;
+import android.view.Display;
 import android.widget.FrameLayout;
 
 import org.lsposed.hiddenapibypass.HiddenApiBypass;
@@ -152,6 +153,9 @@ public class MainActivity extends AppCompatActivity implements IMainActivity {
         // 设置 State.currentActivity 为当前的 MainActivity 实例
         State.currentActivity = new WeakReference<>(this);
         State.resumeJob();
+        
+        // 检查是否需要在应用打开时自动熄屏
+        checkAutoScreenOffOnAppOpen();
     }
 
     @Override
@@ -162,6 +166,58 @@ public class MainActivity extends AppCompatActivity implements IMainActivity {
 
         State.currentActivity = null;
         unregisterReceiver(usbPermissionReceiver);
+    }
+    
+    /**
+     * 检查是否需要在应用打开时自动熄屏
+     */
+    private void checkAutoScreenOffOnAppOpen() {
+        // 检查是否启用了"打开应用时自动熄屏"功能
+        boolean autoScreenOffOnAppOpen = getSharedPreferences("settings", MODE_PRIVATE)
+                .getBoolean("auto_screen_off_on_app_open", false);
+        if (!autoScreenOffOnAppOpen) {
+            return;
+        }
+        
+        // 检查是否启用了真实熄屏
+        boolean useRealScreenOff = getSharedPreferences("settings", MODE_PRIVATE)
+                .getBoolean("use_real_screen_off", false);
+        if (!useRealScreenOff) {
+            return;
+        }
+        
+        // 检查是否有绑定的熄屏屏幕
+        String boundDisplayName = getSharedPreferences("settings", MODE_PRIVATE)
+                .getString("auto_screen_off_display_name", "");
+        if (boundDisplayName.isEmpty()) {
+            return;
+        }
+        
+        // 检查是否有权限
+        if (!ShizukuUtils.hasPermission() || State.userService == null) {
+            return;
+        }
+        
+        // 检查绑定的屏幕是否已连接
+        DisplayManager displayManager = (DisplayManager) getSystemService(Context.DISPLAY_SERVICE);
+        Display[] displays = displayManager.getDisplays();
+        boolean boundDisplayConnected = false;
+        for (Display display : displays) {
+            if (display.getName().equals(boundDisplayName)) {
+                boundDisplayConnected = true;
+                break;
+            }
+        }
+        
+        if (boundDisplayConnected) {
+            State.log("应用打开时检测到绑定屏幕 " + boundDisplayName + " 已连接，自动熄屏");
+            try {
+                State.userService.startListenVolumeKey();
+                State.userService.setScreenPower(com.gitee.connect_screen.shizuku.SurfaceControl.POWER_MODE_OFF);
+            } catch (Exception e) {
+                State.log("应用打开时自动熄屏失败: " + e.getMessage());
+            }
+        }
     }
     
     @Override
