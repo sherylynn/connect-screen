@@ -112,7 +112,7 @@ public class SettingsFragment extends Fragment {
         displayList = Arrays.asList(displays);
 
         List<String> displayNames = new ArrayList<>();
-        displayNames.add("不自动熄屏");
+        // 绑定输入设备不需要"不自动熄屏"选项，直接列出所有显示器
         for (Display display : displays) {
             displayNames.add("显示器 " + display.getDisplayId() + " (" + display.getName() + ")");
         }
