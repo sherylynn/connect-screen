@@ -133,10 +133,27 @@ public class SettingsFragment extends Fragment {
         DisplayManager displayManager = (DisplayManager) requireContext().getSystemService(Context.DISPLAY_SERVICE);
         Display[] displays = displayManager.getDisplays();
 
+        SharedPreferences settings = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE);
+        String savedDisplayName = settings.getString("auto_screen_off_display_name", "");
+
         List<String> displayNames = new ArrayList<>();
+        List<String> displayKeys = new ArrayList<>();
+
         displayNames.add("不自动熄屏");
+        displayKeys.add("");
+
+        boolean savedNameFound = false;
         for (Display display : displays) {
             displayNames.add(display.getName());
+            displayKeys.add(display.getName());
+            if (display.getName().equals(savedDisplayName)) {
+                savedNameFound = true;
+            }
+        }
+
+        if (!savedNameFound && !savedDisplayName.isEmpty()) {
+            displayNames.add(savedDisplayName + " (未连接)");
+            displayKeys.add(savedDisplayName);
         }
 
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
@@ -147,39 +164,28 @@ public class SettingsFragment extends Fragment {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerAutoScreenOffDisplay.setAdapter(adapter);
 
-        // 读取保存的设置（使用显示器名称作为稳定标识符）
-        SharedPreferences settings = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE);
-        String savedDisplayName = settings.getString("auto_screen_off_display_name", "");
-        
-        // 查找对应的位置
-        int position = 0; // 默认"不自动熄屏"
+        int position = 0;
         if (!savedDisplayName.isEmpty()) {
-            for (int i = 0; i < displays.length; i++) {
-                if (displays[i].getName().equals(savedDisplayName)) {
-                    position = i + 1; // +1 因为第一个选项是"不自动熄屏"
+            for (int i = 0; i < displayKeys.size(); i++) {
+                if (displayKeys.get(i).equals(savedDisplayName)) {
+                    position = i;
                     break;
                 }
             }
         }
         spinnerAutoScreenOffDisplay.setSelection(position);
 
-        // 监听选择变化
         spinnerAutoScreenOffDisplay.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override
-            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
-                String selectedDisplayName = "";
-                if (position > 0 && position <= displays.length) {
-                    selectedDisplayName = displays[position - 1].getName();
-                }
-                // 保存到 SharedPreferences（使用显示器名称作为稳定标识符）
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int pos, long id) {
+                String selectedKey = displayKeys.get(pos);
                 settings.edit()
-                        .putString("auto_screen_off_display_name", selectedDisplayName)
+                        .putString("auto_screen_off_display_name", selectedKey)
                         .apply();
             }
 
             @Override
             public void onNothingSelected(android.widget.AdapterView<?> parent) {
-                // 不做处理
             }
         });
     }

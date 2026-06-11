@@ -15,4 +15,6 @@ interface IUserService {
     void startListenVolumeKey() = 5;
 
     void stopListenVolumeKey() = 6;
+
+    boolean isLoopActive() = 7;
 }

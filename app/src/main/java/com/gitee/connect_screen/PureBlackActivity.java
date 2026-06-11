@@ -273,10 +273,9 @@ public class PureBlackActivity extends AppCompatActivity {
         State.isInPureBlackActivity = null;
         if (useRealScreenOff && State.userService != null) {
             try {
-                State.userService.stopListenVolumeKey();
-                State.userService.setScreenPower(SurfaceControl.POWER_MODE_NORMAL);
-            } catch (RemoteException e) {
-                State.log("powerUpScreen failed: " + e.getMessage());
+                State.log("PureBlackActivity onDestroy, useRealScreenOff=true, loop continues running");
+            } catch (Exception e) {
+                // ignore
             }
         }
     }

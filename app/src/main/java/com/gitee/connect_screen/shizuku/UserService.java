@@ -20,10 +20,11 @@ import rikka.shizuku.SystemServiceHelper;
 
 public class UserService extends IUserService.Stub  {
     private Context context;
-    private boolean listenVolumeKey = false;
+    private volatile boolean listenVolumeKey = false;
     private Process listenVolumeKeyProcess;
     private Thread volumeKeyThread;
-    private boolean keepScreenOff = false;
+    private volatile boolean keepScreenOff = false;
+    private volatile boolean userExited = false;
     private Thread screenOffLoopThread;
     private static final long SCREEN_OFF_CHECK_INTERVAL = 100; // 检查间隔（毫秒），缩短为100ms以更快响应系统唤醒
 
@@ -43,7 +44,6 @@ public class UserService extends IUserService.Stub  {
     @Override
     public void destroy() {
         Log.i("UserService", "destroy");
-        stopListenVolumeKey();
         System.exit(0);
     }
 
@@ -141,9 +141,12 @@ public class UserService extends IUserService.Stub  {
     }
 
     public void startListenVolumeKey() throws RemoteException {
-        if (listenVolumeKey) {
+        if (listenVolumeKey && keepScreenOff && screenOffLoopThread != null && screenOffLoopThread.isAlive()) {
+            Log.i("UserService", "startListenVolumeKey: already listening and loop is running, keepScreenOff=" + keepScreenOff);
             return;
         }
+        Log.i("UserService", "startListenVolumeKey: starting new loop, previous listenVolumeKey=" + listenVolumeKey + " keepScreenOff=" + keepScreenOff);
+        userExited = false;
         listenVolumeKey = true;
         keepScreenOff = true;
         
@@ -186,6 +189,7 @@ public class UserService extends IUserService.Stub  {
                     if (!line.endsWith("0000 0000 00000000") &&
                         (line.endsWith("0001 0072 00000001") || line.endsWith("0001 0073 00000001"))) {
                         Log.i("UserService", "volume key pressed, exiting pure black activity");
+                        userExited = true;
                         keepScreenOff = false;
                         setScreenPower(SurfaceControl.POWER_MODE_NORMAL);
                         if (context != null) {
@@ -214,6 +218,7 @@ public class UserService extends IUserService.Stub  {
     }
 
     public void stopListenVolumeKey() {
+        Log.i("UserService", "stopListenVolumeKey called");
         listenVolumeKey = false;
         keepScreenOff = false;
         
@@ -241,5 +246,9 @@ public class UserService extends IUserService.Stub  {
             volumeKeyThread.interrupt();
             volumeKeyThread = null;
         }
+    }
+
+    public boolean isLoopActive() {
+        return !userExited && listenVolumeKey;
     }
 }

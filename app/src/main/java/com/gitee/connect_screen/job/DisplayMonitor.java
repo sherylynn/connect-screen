@@ -24,6 +24,8 @@ import java.util.List;
 
 public class DisplayMonitor {
     private static boolean registered = false;
+    private static long lastScreenOnReinforceTime = 0;
+
     public static void init(DisplayManager displayManager) {
         if (registered) {
             return;
@@ -52,12 +54,53 @@ public class DisplayMonitor {
 
             @Override
             public void onDisplayChanged(int displayId) {
-                // 显示器状态变化时的处理
                 if (State.floatingButtonService != null) {
                     State.floatingButtonService.onDisplayChanged(displayId);
                 }
+                if (displayId == Display.DEFAULT_DISPLAY) {
+                    reinforcScreenOffIfNeeded();
+                }
             }
         }, null);
+    }
+
+    private static void reinforcScreenOffIfNeeded() {
+        long now = System.currentTimeMillis();
+        if (now - lastScreenOnReinforceTime < 500) {
+            return;
+        }
+        if (State.userService == null) {
+            return;
+        }
+        try {
+            if (!State.userService.isLoopActive()) {
+                return;
+            }
+        } catch (Exception e) {
+            return;
+        }
+        Context context = State.currentActivity != null ? State.currentActivity.get() : null;
+        if (context == null) {
+            return;
+        }
+        boolean useRealScreenOff = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+                .getBoolean("use_real_screen_off", false);
+        if (!useRealScreenOff) {
+            return;
+        }
+        String autoScreenOffDisplayName = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+                .getString("auto_screen_off_display_name", "");
+        if (autoScreenOffDisplayName.isEmpty()) {
+            return;
+        }
+        lastScreenOnReinforceTime = now;
+        State.log("默认显示器状态变化，重新确认熄屏");
+        try {
+            State.userService.startListenVolumeKey();
+            State.userService.setScreenPower(SurfaceControl.POWER_MODE_OFF);
+        } catch (Exception e) {
+            State.log("重新熄屏失败: " + e.getMessage());
+        }
     }
 
     private static void handleNewDisplay(Display display) {
