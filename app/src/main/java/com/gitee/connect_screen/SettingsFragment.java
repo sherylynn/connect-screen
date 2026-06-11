@@ -37,6 +37,7 @@ public class SettingsFragment extends Fragment {
     private List<Display> displayList;
     private Spinner spinnerDisplays;
     private Spinner spinnerAutoScreenOffDisplay;
+    private boolean skipAutoScreenOffSpinnerCallback = true;
     private Button btnBind;
     private RecyclerView rvExternalDevices;
     private RecyclerView rvInternalDevices;
@@ -162,6 +163,25 @@ public class SettingsFragment extends Fragment {
             displayNames
         );
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+
+        skipAutoScreenOffSpinnerCallback = true;
+        spinnerAutoScreenOffDisplay.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int pos, long id) {
+                if (skipAutoScreenOffSpinnerCallback) {
+                    return;
+                }
+                String selectedKey = displayKeys.get(pos);
+                settings.edit()
+                        .putString("auto_screen_off_display_name", selectedKey)
+                        .apply();
+            }
+
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {
+            }
+        });
+
         spinnerAutoScreenOffDisplay.setAdapter(adapter);
 
         int position = 0;
@@ -175,19 +195,7 @@ public class SettingsFragment extends Fragment {
         }
         spinnerAutoScreenOffDisplay.setSelection(position);
 
-        spinnerAutoScreenOffDisplay.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int pos, long id) {
-                String selectedKey = displayKeys.get(pos);
-                settings.edit()
-                        .putString("auto_screen_off_display_name", selectedKey)
-                        .apply();
-            }
-
-            @Override
-            public void onNothingSelected(android.widget.AdapterView<?> parent) {
-            }
-        });
+        spinnerAutoScreenOffDisplay.post(() -> skipAutoScreenOffSpinnerCallback = false);
     }
 
     private void setupBindButton() {
