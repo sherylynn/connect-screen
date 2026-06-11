@@ -1,6 +1,7 @@
 package com.gitee.connect_screen;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -35,6 +36,7 @@ import java.util.List;
 public class SettingsFragment extends Fragment {
     private List<Display> displayList;
     private Spinner spinnerDisplays;
+    private Spinner spinnerAutoScreenOffDisplay;
     private Button btnBind;
     private RecyclerView rvExternalDevices;
     private RecyclerView rvInternalDevices;
@@ -69,9 +71,11 @@ public class SettingsFragment extends Fragment {
         cbAllowForceScreenOff = view.findViewById(R.id.cbAllowForceScreenOff);
         cbMouseMiddleButtonSwitch = view.findViewById(R.id.cbMouseMiddleButtonSwitch);
         cbStayOnWhilePlugged = view.findViewById(R.id.cbStayOnWhilePlugged);
+        spinnerAutoScreenOffDisplay = view.findViewById(R.id.spinnerAutoScreenOffDisplay);
         externalDeviceContainer = view.findViewById(R.id.externalDeviceContainer);
         
         initializeDisplaySpinner();
+        initializeAutoScreenOffDisplaySpinner();
         setupBindButton();
         setupDeviceLists();
 
@@ -96,6 +100,9 @@ public class SettingsFragment extends Fragment {
             cbStayOnWhilePlugged.setVisibility(View.GONE);
         }
         
+        // 确保绑定屏幕自动熄屏选项始终可见
+        spinnerAutoScreenOffDisplay.setVisibility(View.VISIBLE);
+        
         return view;
     }
 
@@ -105,6 +112,7 @@ public class SettingsFragment extends Fragment {
         displayList = Arrays.asList(displays);
 
         List<String> displayNames = new ArrayList<>();
+        displayNames.add("不自动熄屏");
         for (Display display : displays) {
             displayNames.add("显示器 " + display.getDisplayId() + " (" + display.getName() + ")");
         }
@@ -116,6 +124,61 @@ public class SettingsFragment extends Fragment {
         );
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerDisplays.setAdapter(adapter);
+    }
+
+    private void initializeAutoScreenOffDisplaySpinner() {
+        DisplayManager displayManager = (DisplayManager) requireContext().getSystemService(Context.DISPLAY_SERVICE);
+        Display[] displays = displayManager.getDisplays();
+
+        List<String> displayNames = new ArrayList<>();
+        displayNames.add("不自动熄屏");
+        for (Display display : displays) {
+            displayNames.add("显示器 " + display.getDisplayId() + " (" + display.getName() + ")");
+        }
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+            requireContext(),
+            android.R.layout.simple_spinner_item,
+            displayNames
+        );
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerAutoScreenOffDisplay.setAdapter(adapter);
+
+        // 读取保存的设置
+        SharedPreferences settings = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE);
+        int savedDisplayId = settings.getInt("auto_screen_off_display_id", -1);
+        
+        // 查找对应的位置
+        int position = 0; // 默认"不自动熄屏"
+        if (savedDisplayId != -1) {
+            for (int i = 0; i < displays.length; i++) {
+                if (displays[i].getDisplayId() == savedDisplayId) {
+                    position = i + 1; // +1 因为第一个选项是"不自动熄屏"
+                    break;
+                }
+            }
+        }
+        spinnerAutoScreenOffDisplay.setSelection(position);
+
+        // 监听选择变化
+        spinnerAutoScreenOffDisplay.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                int selectedDisplayId = -1;
+                if (position > 0 && position <= displays.length) {
+                    selectedDisplayId = displays[position - 1].getDisplayId();
+                }
+                // 保存到 SharedPreferences
+                settings.edit()
+                        .putInt("auto_screen_off_display_id", selectedDisplayId)
+                        .apply();
+            }
+
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {
+                // 不做处理
+            }
+        });
     }
 
     private void setupBindButton() {

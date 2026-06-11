@@ -135,7 +135,8 @@ public class PureBlackActivity extends AppCompatActivity {
             
             view.setOnCapturedPointerListener((v, event) -> {
                 // 检测鼠标中键按下事件
-                if (event.getButtonState() == MotionEvent.BUTTON_STYLUS_PRIMARY) {
+                // 使用 BUTTON_SECONDARY 检测鼠标中键
+                if ((event.getButtonState() & MotionEvent.BUTTON_SECONDARY) != 0) {
                     handleMouseMiddleButtonClick();
                     return true;
                 }

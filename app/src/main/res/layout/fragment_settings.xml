@@ -75,6 +75,21 @@
         android:text="充电时屏幕不休眠"
         android:layout_marginBottom="8dp"/>
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="绑定屏幕自动熄屏："
+        android:textStyle="bold"
+        android:textSize="16sp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="8dp"/>
+
+    <Spinner
+        android:id="@+id/spinnerAutoScreenOffDisplay"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"/>
+
     <LinearLayout
         android:id="@+id/externalDeviceContainer"
         android:layout_width="match_parent"

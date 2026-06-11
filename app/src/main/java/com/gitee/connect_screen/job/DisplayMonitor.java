@@ -18,6 +18,7 @@ import com.gitee.connect_screen.BridgePref;
 import com.gitee.connect_screen.State;
 import com.gitee.connect_screen.shizuku.ServiceUtils;
 import com.gitee.connect_screen.shizuku.ShizukuUtils;
+import com.gitee.connect_screen.shizuku.SurfaceControl;
 
 import java.util.List;
 
@@ -69,6 +70,7 @@ public class DisplayMonitor {
         }
         handleAutoOpenLastApp(context, display);
         handleDisableUsbAudio(context);
+        handleAutoScreenOff(context, display);
     }
 
     private static void handleDisableUsbAudio(Context context) {
@@ -139,5 +141,37 @@ public class DisplayMonitor {
         new Handler().postDelayed(() -> {
             ServiceUtils.launchPackage(context, lastPackageName, display.getDisplayId());
         }, 500);
+    }
+
+    private static void handleAutoScreenOff(Context context, Display display) {
+        if (!ShizukuUtils.hasPermission()) {
+            return;
+        }
+        // 检查是否启用了真实熄屏
+        boolean useRealScreenOff = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+                .getBoolean("use_real_screen_off", false);
+        if (!useRealScreenOff) {
+            return;
+        }
+        // 检查是否设置了自动熄屏的屏幕
+        int autoScreenOffDisplayId = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+                .getInt("auto_screen_off_display_id", -1);
+        if (autoScreenOffDisplayId == -1) {
+            return;
+        }
+        // 检查当前插入的屏幕是否是绑定的屏幕
+        if (display.getDisplayId() == autoScreenOffDisplayId) {
+            State.log("检测到绑定屏幕 " + display.getName() + " 插入，自动熄屏");
+            new Handler().postDelayed(() -> {
+                try {
+                    if (State.userService != null) {
+                        State.userService.startListenVolumeKey();
+                        State.userService.setScreenPower(SurfaceControl.POWER_MODE_OFF);
+                    }
+                } catch (Exception e) {
+                    State.log("自动熄屏失败: " + e.getMessage());
+                }
+            }, 500);
+        }
     }
 }
